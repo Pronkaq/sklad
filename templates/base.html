@@ -173,6 +173,9 @@
         <span style="float:right;">{{ current_user.display_name }} | <a href="{{ url_for('logout') }}">Выход</a></span>
     {% endif %}
 </header>
+<button id="install-app-btn" class="btn ok" style="display:none; position:fixed; right:12px; bottom:12px; z-index:30;">
+    Установить приложение
+</button>
 <main>
     {% block content %}{% endblock %}
 </main>
@@ -185,8 +188,48 @@
 {% endif %}
 <script>
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('/static/service-worker.js'));
+  window.addEventListener('load', async () => {
+    try {
+      await navigator.serviceWorker.register('/static/service-worker.js');
+    } catch (e) {
+      console.error('Service worker registration failed', e);
+    }
+  });
 }
+
+let deferredPrompt = null;
+const installBtn = document.getElementById('install-app-btn');
+const INSTALL_DISMISS_KEY = 'pwa-install-dismissed-v1';
+
+function isStandaloneMode() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  if (isStandaloneMode() || localStorage.getItem(INSTALL_DISMISS_KEY) === '1') return;
+  deferredPrompt = event;
+  if (installBtn) installBtn.style.display = 'inline-block';
+});
+
+if (installBtn) {
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const result = await deferredPrompt.userChoice;
+    if (result && result.outcome === 'dismissed') {
+      localStorage.setItem(INSTALL_DISMISS_KEY, '1');
+    }
+    deferredPrompt = null;
+    installBtn.style.display = 'none';
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  if (installBtn) installBtn.style.display = 'none';
+  localStorage.removeItem(INSTALL_DISMISS_KEY);
+});
 </script>
 </body>
 </html>

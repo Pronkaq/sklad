@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sklad-pwa-v2';
+const CACHE_NAME = 'sklad-pwa-v3';
 const STATIC_ASSETS = [
   '/static/manifest.webmanifest',
   '/static/icons/icon-192.svg',
@@ -32,7 +32,18 @@ self.addEventListener('fetch', (event) => {
 
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req).catch(() => caches.match('/static/offline.html'))
+      fetch(req)
+        .then((response) => {
+          if (!response || response.status !== 200 || response.type !== 'basic') return response;
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+          return response;
+        })
+        .catch(async () => {
+          const cachedPage = await caches.match(req);
+          if (cachedPage) return cachedPage;
+          return caches.match('/static/offline.html');
+        })
     );
     return;
   }
@@ -42,11 +53,24 @@ self.addEventListener('fetch', (event) => {
       caches.match(req).then((cached) => {
         if (cached) return cached;
         return fetch(req).then((response) => {
+          if (!response || response.status !== 200 || response.type !== 'basic') return response;
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
           return response;
         });
       })
     );
+    return;
   }
+
+  event.respondWith(
+    fetch(req)
+      .then((response) => {
+        if (!response || response.status !== 200 || response.type !== 'basic') return response;
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+        return response;
+      })
+      .catch(() => caches.match(req))
+  );
 });
