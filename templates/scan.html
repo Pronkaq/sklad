@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h1>Сканировать QR поддона</h1>
+    <p class="muted">
+        Наведи камеру на QR-код этикетки. После распознавания откроется карточка поддона.
+    </p>
+
+    <div id="https-warning" class="small-form" style="display:none; background:#fff7ed;">
+        <b>Камера может не запуститься по HTTP.</b><br>
+        На телефонах браузеры обычно дают доступ к камере только по HTTPS.
+        Если кнопка запуска камеры не работает — открой QR обычной камерой телефона или введи ID вручную ниже.
+    </div>
+
+    <div id="lib-warning" class="small-form" style="display:none; background:#fee2e2;">
+        <b>Не загрузилась библиотека сканера.</b><br>
+        Проверь интернет на телефоне/ПК. Либо используй обычную камеру телефона или ручной ввод.
+    </div>
+
+    <div class="small-form">
+        <video id="preview" autoplay muted playsinline style="width:100%; max-width:560px; border-radius:14px; background:#111;"></video>
+        <p id="scan-status" class="muted">Нажми кнопку запуска камеры.</p>
+        <button id="start-btn" type="button">Запустить камеру</button>
+        <button id="stop-btn" type="button" class="secondary" style="display:none;">Остановить</button>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Ручной ввод</h2>
+    <p class="muted">Если камера не завелась, введи ID поддона или вставь ссылку из QR.</p>
+    <form id="manual-form">
+        <div class="actions">
+            <div style="flex: 1;">
+                <label>ID или ссылка</label>
+                <input id="manual-input" placeholder="Например: P-2026-000001 или https://.../pallet/P-2026-000001">
+            </div>
+            <button type="submit">Открыть</button>
+        </div>
+    </form>
+</div>
+
+<script src="https://unpkg.com/@zxing/browser@latest"></script>
+<script>
+const video = document.getElementById("preview");
+const statusEl = document.getElementById("scan-status");
+const startBtn = document.getElementById("start-btn");
+const stopBtn = document.getElementById("stop-btn");
+const httpsWarning = document.getElementById("https-warning");
+const libWarning = document.getElementById("lib-warning");
+
+let codeReader = null;
+let controls = null;
+
+if (location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+    httpsWarning.style.display = "block";
+}
+
+function openScannedValue(value) {
+    if (!value) return;
+
+    value = String(value).trim();
+
+    if (value.startsWith("http://") || value.startsWith("https://")) {
+        window.location.href = value;
+        return;
+    }
+
+    window.location.href = "/pallet/" + encodeURIComponent(value);
+}
+
+async function startScanner() {
+    if (!window.ZXingBrowser) {
+        libWarning.style.display = "block";
+        statusEl.textContent = "Библиотека сканера не загрузилась.";
+        return;
+    }
+
+    try {
+        statusEl.textContent = "Запрашиваю доступ к камере...";
+
+        codeReader = new ZXingBrowser.BrowserQRCodeReader();
+
+        const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
+
+        let selectedDeviceId = undefined;
+
+        if (devices && devices.length > 0) {
+            const backCamera = devices.find(d =>
+                /back|rear|environment|зад/i.test(d.label)
+            );
+            selectedDeviceId = backCamera ? backCamera.deviceId : devices[0].deviceId;
+        }
+
+        controls = await codeReader.decodeFromVideoDevice(
+            selectedDeviceId,
+            video,
+            (result, error, controlsInner) => {
+                if (result) {
+                    statusEl.textContent = "QR найден. Открываю карточку...";
+                    try {
+                        controlsInner.stop();
+                    } catch (e) {}
+                    openScannedValue(result.getText());
+                }
+            }
+        );
+
+        startBtn.style.display = "none";
+        stopBtn.style.display = "inline-block";
+        statusEl.textContent = "Камера запущена. Наведи на QR.";
+
+    } catch (err) {
+        statusEl.textContent = "Не удалось запустить камеру: " + err;
+        httpsWarning.style.display = "block";
+    }
+}
+
+function stopScanner() {
+    try {
+        if (controls) controls.stop();
+    } catch (e) {}
+
+    controls = null;
+    video.srcObject = null;
+    startBtn.style.display = "inline-block";
+    stopBtn.style.display = "none";
+    statusEl.textContent = "Сканирование остановлено.";
+}
+
+startBtn.addEventListener("click", startScanner);
+stopBtn.addEventListener("click", stopScanner);
+
+document.getElementById("manual-form").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const value = document.getElementById("manual-input").value;
+    openScannedValue(value);
+});
+</script>
+{% endblock %}

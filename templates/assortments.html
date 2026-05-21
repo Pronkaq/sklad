@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h1>Справочник ассортимента</h1>
+    <form method="post">
+        <div class="grid">
+            <div>
+                <label>Новый ассортимент</label>
+                <input name="name" placeholder="Например: Нить 11С6..." required>
+            </div>
+            <div>
+                <label>Тип продукции</label>
+                <select name="category">
+                    {% for code, label in ITEM_CATEGORIES %}
+                        <option value="{{ code }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <button type="submit">Добавить / включить</button>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Текущий список</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Ассортимент</th>
+                <th>Тип</th>
+                <th>Активен</th>
+                <th>Действие</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for a in assortments %}
+            <tr>
+                <td>{{ a.name }}</td>
+                <td>
+                    {% for code, label in ITEM_CATEGORIES %}
+                        {% if code == a.category %}{{ label }}{% endif %}
+                    {% endfor %}
+                </td>
+                <td>{{ "Да" if a.active else "Нет" }}</td>
+                <td>
+                    <form method="post" action="{{ url_for('toggle_assortment', name=a.name) }}">
+                        <button class="secondary" type="submit">
+                            {% if a.active %}Отключить{% else %}Включить{% endif %}
+                        </button>
+                    </form>
+                </td>
+            </tr>
+        {% else %}
+            <tr><td colspan="4" class="muted">Список пуст.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

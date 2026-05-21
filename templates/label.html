@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <title>Этикетка {{ pallet.id }}</title>
+    <style>
+        @page {
+            size: A5 landscape;
+            margin: 8mm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background: #eee;
+            margin: 0;
+            padding: 20px;
+        }
+        .label {
+            background: white;
+            width: 194mm;
+            min-height: 132mm;
+            border: 2px solid #111;
+            padding: 10mm;
+        }
+        h1 {
+            font-size: 34pt;
+            margin: 0 0 6mm;
+        }
+        .row {
+            font-size: 18pt;
+            margin: 3mm 0;
+        }
+        .qr {
+            margin-top: 5mm;
+            display: flex;
+            align-items: center;
+            gap: 6mm;
+        }
+        .qr img {
+            width: 52mm;
+            height: 52mm;
+        }
+        .small {
+            font-size: 13pt;
+        }
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .no-print {
+                display: none;
+            }
+            .label {
+                margin: 0;
+                page-break-after: always;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="no-print">
+    <button onclick="window.print()">Печать</button>
+    <a href="{{ url_for('pallet_detail', pallet_id=pallet.id) }}">Назад</a>
+</div>
+
+<div class="label">
+    <h1>{{ pallet.id }}</h1>
+    <div class="row"><b>Статус:</b> {{ STATUSES.get(pallet.status, pallet.status) }}</div>
+    <div class="row"><b>Ассортимент:</b> {{ pallet.assortment }}</div>
+    <div class="row"><b>Тип:</b>
+        {% for code, label in ITEM_CATEGORIES %}
+            {% if code == pallet.item_category %}{{ label }}{% endif %}
+        {% endfor %}
+    </div>
+    <div class="row"><b>Партия:</b> {{ pallet.party_number or "—" }}</div>
+    <div class="row"><b>Рулонов:</b> {{ pallet.rolls_count }}</div>
+    <div class="row"><b>Метраж:</b> {{ pallet.meters_total }}</div>
+    <div class="row"><b>Источник:</b> {{ LOCATIONS.get(pallet.source_shop, pallet.source_shop) }}</div>
+    <div class="row"><b>Дата наработки:</b> {{ pallet.production_date or "—" }}</div>
+    <div class="row"><b>Дата обработки:</b> {{ pallet.processing_date or "—" }}</div>
+    <div class="row"><b>Вид обработки:</b> {{ pallet.process_type or "—" }}</div>
+    <div class="row"><b>Ответственный:</b> {{ pallet.responsible or "—" }}</div>
+
+    <div class="qr">
+        <img src="{{ url_for('qr_svg', pallet_id=pallet.id) }}">
+        <div class="small">
+            Отсканируй QR для открытия карточки поддона.<br>
+            Родитель: {{ pallet.parent_id or "—" }}
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h1>Создать этикетку текущего остатка</h1>
+    <p class="muted">
+        Для первичной инвентаризации: обойти цеховой склад, склад готовой продукции и текущие остатки,
+        завести партии в систему и распечатать новые этикетки.
+    </p>
+
+    <form method="post">
+        <div class="grid">
+            <div>
+                <label>Тип продукции</label>
+                <select name="item_category" required>
+                    {% for code, label in ITEM_CATEGORIES %}
+                        <option value="{{ code }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label>Ассортимент</label>
+                <select name="assortment" required>
+                    {% for a in assortments %}
+                        <option value="{{ a.name }}">{{ a.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label>Номер партии</label>
+                <input name="party_number" placeholder="Партия / заказ / смена">
+            </div>
+
+            <div>
+                <label>Рулонов / мест / бухт</label>
+                <input name="rolls_count" type="number" min="0" value="1" required>
+            </div>
+
+            <div>
+                <label>Метраж</label>
+                <input name="meters_total" placeholder="Например: 1200 или 1200,5" required>
+            </div>
+
+            <div>
+                <label>Где лежит</label>
+                <select name="location" required>
+                    <option value="SHOP5_WAREHOUSE">Цеховой склад 5</option>
+                    <option value="FG_WAREHOUSE">Склад готовой продукции</option>
+                    <option value="KTU1">КТУ-1</option>
+                    <option value="KTU2">КТУ-2</option>
+                    <option value="LKTM">ЛКТМ</option>
+                    <option value="INSPECTION">Разбраковка</option>
+                    <option value="TO">ТО</option>
+                    <option value="LAB7">7 лаборатория</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Ответственный</label>
+                <input name="responsible" value="{{ current_user.display_name if current_user else '' }}">
+            </div>
+        </div>
+
+        <p>
+            <label>Комментарий</label>
+            <textarea name="comment" placeholder="Например: заведено при первичной инвентаризации"></textarea>
+        </p>
+
+        <button type="submit">Создать этикетку текущего остатка</button>
+    </form>
+</div>
+{% endblock %}

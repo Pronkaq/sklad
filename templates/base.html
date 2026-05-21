@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <title>{{ title or "Учёт поддонов" }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {
+            --bg: #f4f6f8;
+            --card: #ffffff;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --line: #e5e7eb;
+            --accent: #2563eb;
+            --danger: #dc2626;
+            --ok: #16a34a;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+        header {
+            background: #111827;
+            color: white;
+            padding: 14px 20px;
+        }
+        header a {
+            color: white;
+            text-decoration: none;
+            margin-right: 18px;
+            font-weight: 600;
+        }
+        main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 22px;
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 18px;
+            margin-bottom: 18px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.04);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 14px;
+        }
+        label {
+            display: block;
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px 11px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            font-size: 15px;
+            background: white;
+        }
+        textarea { min-height: 80px; }
+        button, .btn {
+            display: inline-block;
+            border: 0;
+            background: var(--accent);
+            color: white;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 15px;
+            text-decoration: none;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        .btn.secondary, button.secondary { background: #4b5563; }
+        .btn.ok, button.ok { background: var(--ok); }
+        .btn.danger, button.danger { background: var(--danger); }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+        th, td {
+            border-bottom: 1px solid var(--line);
+            text-align: left;
+            padding: 10px;
+            vertical-align: top;
+        }
+        th {
+            background: #f9fafb;
+            font-size: 13px;
+            color: var(--muted);
+        }
+        .muted { color: var(--muted); }
+        .pill {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: #eef2ff;
+            color: #3730a3;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: end;
+        }
+        .small-form {
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 12px;
+            background: #fafafa;
+            margin-top: 12px;
+        }
+        @media (max-width: 650px) {
+            main { padding: 12px; }
+            header a { display: inline-block; margin-bottom: 8px; }
+            table { font-size: 13px; }
+            th, td { padding: 7px; }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <a href="{{ url_for('index') }}">Главная</a>
+
+    {% if current_user and is_source_user(current_user) %}
+        <a href="{{ url_for('create_pallet') }}">Создать этикетку передачи</a>
+        <a href="{{ url_for('search') }}">Поиск своих поддонов</a>
+    {% endif %}
+
+    {% if current_user and is_shop5_user(current_user) %}
+        <a href="{{ url_for('search') }}">Поиск</a>
+        <a href="{{ url_for('manual_pallet') }}">Текущий остаток</a>
+        <a href="{{ url_for('assortments_page') }}">Ассортимент</a>
+        <a href="{{ url_for('scan_page') }}">Сканировать QR</a>
+        <a href="{{ url_for('reports_page') }}">Отчёты</a>
+        <a href="{{ url_for('export_stock') }}">Выгрузить остатки Excel</a>
+    {% endif %}
+
+    {% if current_user %}
+        <span style="float:right;">{{ current_user.display_name }} | <a href="{{ url_for('logout') }}">Выход</a></span>
+    {% endif %}
+</header>
+<main>
+    {% block content %}{% endblock %}
+</main>
+</body>
+</html>

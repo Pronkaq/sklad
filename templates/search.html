@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h1>Поиск поддона</h1>
+    <form method="get">
+        <div class="actions">
+            <div style="flex: 1;">
+                <label>ID, ассортимент, ФИО или комментарий</label>
+                <input name="q" value="{{ q }}" placeholder="Например: СТ-11-13 или P-2026">
+            </div>
+            <button>Искать</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Результаты</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Партия</th>
+                <th>Ассортимент</th>
+                <th>Статус</th>
+                <th>Место</th>
+                <th>Рулоны</th>
+                <th>Метраж</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for p in pallets %}
+            <tr>
+                <td><a href="{{ url_for('pallet_detail', pallet_id=p.id) }}">{{ p.id }}</a></td>
+                <td>{{ p.party_number or "—" }}</td>
+                <td>{{ p.assortment }}</td>
+                {% if current_user and is_source_user(current_user) %}
+                    <td>{% if p.status == 'CREATED' %}Создана этикетка{% else %}Передано в цех 5{% endif %}</td>
+                    <td>Цех 5</td>
+                {% else %}
+                    <td>{{ STATUSES.get(p.status, p.status) }}</td>
+                    <td>{{ LOCATIONS.get(p.location, p.location) }}</td>
+                {% endif %}
+                <td>{{ p.rolls_count }}</td>
+                <td>{{ p.meters_total }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="7" class="muted">Ничего не найдено или запрос пустой.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

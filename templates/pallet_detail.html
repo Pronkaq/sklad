@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h1>Поддон {{ pallet.id }}</h1>
+    <p>
+        <span class="pill">{{ STATUSES.get(pallet.status, pallet.status) }}</span>
+        <span class="muted">Место: {{ LOCATIONS.get(pallet.location, pallet.location) }}</span>
+    </p>
+
+    <div class="grid">
+        <div><b>Ассортимент:</b><br>{{ pallet.assortment }}</div>
+        <div><b>Тип продукции:</b><br>
+            {% for code, label in ITEM_CATEGORIES %}
+                {% if code == pallet.item_category %}{{ label }}{% endif %}
+            {% endfor %}
+        </div>
+        <div><b>Номер партии:</b><br>{{ pallet.party_number or "—" }}</div>
+        <div><b>Рулонов:</b><br>{{ pallet.rolls_count }}</div>
+        <div><b>Метраж:</b><br>{{ pallet.meters_total }}</div>
+        <div><b>Источник:</b><br>{{ LOCATIONS.get(pallet.source_shop, pallet.source_shop) }}</div>
+        <div><b>Дата наработки:</b><br>{{ pallet.production_date or "—" }}</div>
+        <div><b>Дата обработки:</b><br>{{ pallet.processing_date or "—" }}</div>
+        <div><b>Вид обработки:</b><br>{{ pallet.process_type or "—" }}</div>
+        <div><b>Установка:</b><br>{{ LOCATIONS.get(pallet.machine, pallet.machine) if pallet.machine else "—" }}</div>
+        <div><b>Ответственный:</b><br>{{ pallet.responsible or "—" }}</div>
+        <div><b>Родительский поддон:</b><br>
+            {% if pallet.parent_id %}
+                <a href="{{ url_for('pallet_detail', pallet_id=pallet.parent_id) }}">{{ pallet.parent_id }}</a>
+            {% else %}
+                —
+            {% endif %}
+        </div>
+    </div>
+
+    <p>
+        <a class="btn" href="{{ url_for('label', pallet_id=pallet.id) }}">Этикетка</a>
+        <a class="btn secondary" href="{{ url_for('qr_svg', pallet_id=pallet.id) }}">QR-код</a>
+    </p>
+</div>
+
+{% if current_user and is_source_user(current_user) %}
+<div class="card">
+    <h2>Доступно для {{ current_user.display_name }}</h2>
+    <p class="muted">
+        Для вашего цеха отображается только факт создания/передачи этикетки в цех 5. Что дальше делает цех 5 с поддоном, передающим цехам не показывается.
+    </p>
+    <a class="btn" href="{{ url_for('label', pallet_id=pallet.id) }}">Открыть этикетку A5</a>
+</div>
+{% endif %}
+
+{% if current_user and is_shop5_user(current_user) %}
+<div class="card">
+    <h2>Действия цеха 5</h2>
+
+    <div class="grid">
+
+        <form class="small-form" method="post" action="{{ url_for('accept_to_shop5', pallet_id=pallet.id) }}">
+            <h3>Принять в цех 5</h3>
+            <label>Кто принимает</label>
+            <input name="user" placeholder="ФИО">
+            <button class="ok">Принять на склад цеха 5</button>
+        </form>
+
+        <form class="small-form" method="post" action="{{ url_for('send_processing', pallet_id=pallet.id) }}">
+            <h3>Передать на обработку</h3>
+            <label>Установка</label>
+            <select name="machine" required>
+                <option value="KTU1">КТУ-1</option>
+                <option value="KTU2">КТУ-2</option>
+                <option value="LKTM">ЛКТМ</option>
+            </select>
+            <label>Вид обработки</label>
+            <input name="process_type" placeholder="Кислотная / термо / другое">
+            <label>Мастер</label>
+            <input name="user" placeholder="ФИО">
+            <button>Передать</button>
+        </form>
+
+        <form class="small-form" method="post" action="{{ url_for('finish_processing', pallet_id=pallet.id) }}">
+            <h3>Завершить обработку</h3>
+            <label>Ассортимент после обработки</label>
+            <select name="assortment" required>
+                {% for a in db_assortments %}
+                    <option value="{{ a.name }}" {% if a.name == pallet.assortment.replace('СТ-', 'КТ-') %}selected{% endif %}>{{ a.name }}</option>
+                {% endfor %}
+            </select>
+            <label>Рулонов</label>
+            <input name="rolls_count" type="number" value="{{ pallet.rolls_count }}" required>
+            <label>Метраж</label>
+            <input name="meters_total" type="number" step="0.01" value="{{ pallet.meters_total }}" required>
+            <label>Номер партии после обработки</label>
+            <input name="party_number" value="{{ pallet.party_number or '' }}" placeholder="Номер партии">
+            <label>Дата обработки</label>
+            <input name="processing_date" type="date">
+            <label>Вид обработки</label>
+            <input name="process_type" value="{{ pallet.process_type or '' }}">
+            <label>Установка</label>
+            <select name="machine">
+                <option value="{{ pallet.machine or '' }}">{{ LOCATIONS.get(pallet.machine, pallet.machine) if pallet.machine else "Не выбрано" }}</option>
+                <option value="KTU1">КТУ-1</option>
+                <option value="KTU2">КТУ-2</option>
+                <option value="LKTM">ЛКТМ</option>
+            </select>
+            <label>Ответственный за сдачу</label>
+            <input name="responsible" placeholder="ФИО">
+            <label>Комментарий</label>
+            <textarea name="comment"></textarea>
+            <button>Создать новую этикетку после обработки</button>
+        </form>
+
+        <form class="small-form" method="post" action="{{ url_for('start_inspection', pallet_id=pallet.id) }}">
+            <h3>Передать на разбраковку</h3>
+            <label>Кто передал / взял</label>
+            <input name="user" placeholder="ФИО">
+            <button>В разбраковку</button>
+        </form>
+
+    </div>
+</div>
+
+<div class="card">
+    <h2>Завершить разбраковку и разделить поддон</h2>
+    <form method="post" action="{{ url_for('split_inspection', pallet_id=pallet.id) }}">
+        <div class="grid">
+            {% for code, label in destinations %}
+            <div class="small-form">
+                <h3>{{ label }}</h3>
+                <label>Рулонов</label>
+                <input name="rolls_{{ code }}" type="number" min="0">
+                <label>Метраж</label>
+                <input name="meters_{{ code }}" type="number" step="0.01" min="0">
+            </div>
+            {% endfor %}
+        </div>
+        <p>
+            <label>Контролёр / ответственный</label>
+            <input name="user" placeholder="ФИО">
+        </p>
+        <p>
+            <label>Комментарий</label>
+            <textarea name="comment"></textarea>
+        </p>
+        <button class="danger">Закрыть исходный поддон и создать новые</button>
+    </form>
+</div>
+{% endif %}
+
+
+<div class="card">
+    <h2>Продажа / снятие с остатков</h2>
+    <form method="post" action="{{ url_for('mark_sold', pallet_id=pallet.id) }}">
+        <div class="grid">
+            <div>
+                <label>Кто отметил</label>
+                <input name="user" value="{{ current_user.display_name if current_user else '' }}">
+            </div>
+            <div>
+                <label>Комментарий</label>
+                <input name="comment" placeholder="Например: продано по накладной №...">
+            </div>
+        </div>
+        <button class="danger" type="submit">Отметить продано</button>
+    </form>
+</div>
+
+{% if children %}
+<div class="card">
+    <h2>Дочерние поддоны</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Статус</th>
+                <th>Рулонов</th>
+                <th>Метраж</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in children %}
+            <tr>
+                <td><a href="{{ url_for('pallet_detail', pallet_id=c.id) }}">{{ c.id }}</a></td>
+                <td>{{ STATUSES.get(c.status, c.status) }}</td>
+                <td>{{ c.rolls_count }}</td>
+                <td>{{ c.meters_total }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>История движения</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Время</th>
+                <th>Действие</th>
+                <th>Откуда</th>
+                <th>Куда</th>
+                <th>Кто</th>
+                <th>Комментарий</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in movements %}
+            <tr>
+                <td>{{ m.timestamp }}</td>
+                <td>{{ m.action }}</td>
+                <td>{{ STATUSES.get(m.from_status, m.from_status or "—") }} / {{ LOCATIONS.get(m.from_location, m.from_location or "—") }}</td>
+                <td>{{ STATUSES.get(m.to_status, m.to_status or "—") }} / {{ LOCATIONS.get(m.to_location, m.to_location or "—") }}</td>
+                <td>{{ m.user or "—" }}</td>
+                <td>{{ m.comment or "—" }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="muted">Истории пока нет.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h1>Отчёты цеха 5</h1>
+    <form method="get" class="actions">
+        <div>
+            <label>Месяц</label>
+            <input type="month" name="month" value="{{ month }}">
+        </div>
+        <button type="submit">Показать</button>
+        <a class="btn secondary" href="{{ url_for('export_monthly_report', month=month) }}">Выгрузить месячный отчёт Excel</a>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Поступило в цех 5 за {{ month }}</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Цех-источник</th>
+                <th>Ассортимент</th>
+                <th>Поддонов</th>
+                <th>Рулонов</th>
+                <th>Метраж</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in received %}
+            <tr>
+                <td>{{ LOCATIONS.get(row.source_shop, row.source_shop) }}</td>
+                <td>{{ row.assortment }}</td>
+                <td>{{ row.pallets_count }}</td>
+                <td>{{ row.rolls_sum or 0 }}</td>
+                <td>{{ "%.2f"|format(row.meters_sum or 0) }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="5" class="muted">Нет поступлений за выбранный месяц.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>Обработано за {{ month }}</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Ассортимент после обработки</th>
+                <th>Вид обработки</th>
+                <th>Установка</th>
+                <th>Поддонов</th>
+                <th>Рулонов</th>
+                <th>Метраж</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in processed %}
+            <tr>
+                <td>{{ row.assortment }}</td>
+                <td>{{ row.process_type or "—" }}</td>
+                <td>{{ LOCATIONS.get(row.machine, row.machine or "—") }}</td>
+                <td>{{ row.pallets_count }}</td>
+                <td>{{ row.rolls_sum or 0 }}</td>
+                <td>{{ "%.2f"|format(row.meters_sum or 0) }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="6" class="muted">Нет обработки за выбранный месяц.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>После разбраковки за {{ month }}</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Куда ушло</th>
+                <th>Место</th>
+                <th>Ассортимент</th>
+                <th>Поддонов</th>
+                <th>Рулонов</th>
+                <th>Метраж</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in inspection_out %}
+            <tr>
+                <td>{{ STATUSES.get(row.status, row.status) }}</td>
+                <td>{{ LOCATIONS.get(row.location, row.location) }}</td>
+                <td>{{ row.assortment }}</td>
+                <td>{{ row.pallets_count }}</td>
+                <td>{{ row.rolls_sum or 0 }}</td>
+                <td>{{ "%.2f"|format(row.meters_sum or 0) }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="6" class="muted">Нет данных после разбраковки за выбранный месяц.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>Продано за {{ month }}</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Ассортимент</th>
+                <th>Поддонов</th>
+                <th>Рулонов / мест</th>
+                <th>Метраж</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in sold %}
+            <tr>
+                <td>{{ row.assortment }}</td>
+                <td>{{ row.pallets_count }}</td>
+                <td>{{ row.rolls_sum or 0 }}</td>
+                <td>{{ "%.2f"|format(row.meters_sum or 0) }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="4" class="muted">Нет продаж за выбранный месяц.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>Остатки по двум складам</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Склад</th>
+                <th>Ассортимент</th>
+                <th>Поддонов</th>
+                <th>Рулонов</th>
+                <th>Метраж</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in stock_by_warehouse %}
+            <tr>
+                <td>{{ LOCATIONS.get(row.location, row.location) }}</td>
+                <td>{{ row.assortment }}</td>
+                <td>{{ row.pallets_count }}</td>
+                <td>{{ row.rolls_sum or 0 }}</td>
+                <td>{{ "%.2f"|format(row.meters_sum or 0) }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="5" class="muted">На складах нет активных остатков.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>Все текущие остатки по стадиям</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Статус</th>
+                <th>Место</th>
+                <th>Ассортимент</th>
+                <th>Поддонов</th>
+                <th>Рулонов</th>
+                <th>Метраж</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in stock %}
+            <tr>
+                <td>{{ STATUSES.get(row.status, row.status) }}</td>
+                <td>{{ LOCATIONS.get(row.location, row.location) }}</td>
+                <td>{{ row.assortment }}</td>
+                <td>{{ row.pallets_count }}</td>
+                <td>{{ row.rolls_sum or 0 }}</td>
+                <td>{{ "%.2f"|format(row.meters_sum or 0) }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="6" class="muted">Нет активных остатков.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

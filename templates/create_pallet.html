@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h1>Создать этикетку передачи в цех 5</h1>
+    <form method="post">
+        <div class="grid">
+            <div>
+                <label>Цех-источник</label>
+                {% if user and user.role == "source_user" %}
+                    <input value="{{ LOCATIONS.get(user.shop, user.shop) }}" disabled>
+                    <input type="hidden" name="source_shop" value="{{ user.shop }}">
+                {% else %}
+                    <select name="source_shop" required>
+                        <option value="SHOP10">Цех 10</option>
+                        <option value="SHOP3">Цех 3</option>
+                        <option value="NOVGOROD">Новгород</option>
+                    </select>
+                {% endif %}
+            </div>
+            <div>
+                <label>Тип продукции</label>
+                <select name="item_category" required>
+                    {% for code, label in ITEM_CATEGORIES %}
+                        <option value="{{ code }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>Ассортимент</label>
+                <select name="assortment" required>
+                    {% for a in db_assortments %}
+                        <option value="{{ a.name }}">{{ a.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>Номер партии</label>
+                <input name="party_number" placeholder="Например: партия / заказ / смена">
+            </div>
+            <div>
+                <label>Количество рулонов</label>
+                <input name="rolls_count" type="number" min="0" required>
+            </div>
+            <div>
+                <label>Общий метраж</label>
+                <input name="meters_total" type="number" step="0.01" min="0" required>
+            </div>
+            <div>
+                <label>Дата наработки</label>
+                <input name="production_date" type="date">
+            </div>
+            <div>
+                <label>Ответственный</label>
+                <input name="responsible" placeholder="ФИО" value="{{ current_user.display_name if current_user else '' }}">
+            </div>
+        </div>
+        <p>
+            <label>Комментарий</label>
+            <textarea name="comment"></textarea>
+        </p>
+        <button type="submit">Создать этикетку</button>
+    </form>
+</div>
+{% endblock %}
