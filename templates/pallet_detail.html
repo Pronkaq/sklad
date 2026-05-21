@@ -45,6 +45,12 @@
         Для вашего цеха отображается только факт создания/передачи этикетки в цех 5. Что дальше делает цех 5 с поддоном, передающим цехам не показывается.
     </p>
     <a class="btn" href="{{ url_for('label', pallet_id=pallet.id) }}">Открыть этикетку A5</a>
+    {% if can_delete_pallet(current_user, pallet) %}
+    <form method="post" action="{{ url_for('delete_pallet', pallet_id=pallet.id) }}" style="margin-top: 12px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="danger" type="submit">Удалить этикетку</button>
+    </form>
+    {% endif %}
 </div>
 {% endif %}
 
