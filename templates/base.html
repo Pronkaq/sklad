@@ -173,6 +173,9 @@
         <span style="float:right;">{{ current_user.display_name }} | <a href="{{ url_for('logout') }}">Выход</a></span>
     {% endif %}
 </header>
+<button id="install-app-btn" class="btn ok" style="display:none; position:fixed; right:12px; bottom:12px; z-index:30;">
+    Установить приложение
+</button>
 <main>
     {% block content %}{% endblock %}
 </main>
@@ -185,7 +188,32 @@
 {% endif %}
 <script>
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('/static/service-worker.js'));
+  window.addEventListener('load', async () => {
+    try {
+      await navigator.serviceWorker.register('/static/service-worker.js');
+    } catch (e) {
+      console.error('Service worker registration failed', e);
+    }
+  });
+}
+
+let deferredPrompt = null;
+const installBtn = document.getElementById('install-app-btn');
+
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  deferredPrompt = event;
+  if (installBtn) installBtn.style.display = 'inline-block';
+});
+
+if (installBtn) {
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    installBtn.style.display = 'none';
+  });
 }
 </script>
 </body>
