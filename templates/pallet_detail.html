@@ -55,6 +55,7 @@
     <div class="grid">
 
         <form class="small-form" method="post" action="{{ url_for('accept_to_shop5', pallet_id=pallet.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <h3>Принять в цех 5</h3>
             <label>Кто принимает</label>
             <input name="user" placeholder="ФИО">
@@ -62,6 +63,7 @@
         </form>
 
         <form class="small-form" method="post" action="{{ url_for('send_processing', pallet_id=pallet.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <h3>Передать на обработку</h3>
             <label>Установка</label>
             <select name="machine" required>
@@ -77,6 +79,7 @@
         </form>
 
         <form class="small-form" method="post" action="{{ url_for('finish_processing', pallet_id=pallet.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <h3>Завершить обработку</h3>
             <label>Ассортимент после обработки</label>
             <select name="assortment" required>
@@ -109,6 +112,7 @@
         </form>
 
         <form class="small-form" method="post" action="{{ url_for('start_inspection', pallet_id=pallet.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <h3>Передать на разбраковку</h3>
             <label>Кто передал / взял</label>
             <input name="user" placeholder="ФИО">
@@ -121,6 +125,7 @@
 <div class="card">
     <h2>Завершить разбраковку и разделить поддон</h2>
     <form method="post" action="{{ url_for('split_inspection', pallet_id=pallet.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="grid">
             {% for code, label in destinations %}
             <div class="small-form">
@@ -149,6 +154,7 @@
 <div class="card">
     <h2>Продажа / снятие с остатков</h2>
     <form method="post" action="{{ url_for('mark_sold', pallet_id=pallet.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="grid">
             <div>
                 <label>Кто отметил</label>

@@ -3,6 +3,7 @@
 <div class="card">
     <h1>Справочник ассортимента</h1>
     <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="grid">
             <div>
                 <label>Новый ассортимент</label>
@@ -44,6 +45,7 @@
                 <td>{{ "Да" if a.active else "Нет" }}</td>
                 <td>
                     <form method="post" action="{{ url_for('toggle_assortment', name=a.name) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button class="secondary" type="submit">
                             {% if a.active %}Отключить{% else %}Включить{% endif %}
                         </button>

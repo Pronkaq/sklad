@@ -78,6 +78,7 @@
     {% endif %}
 
     <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label>Логин</label>
         <input name="username" autocomplete="username" autofocus required>
 
@@ -87,19 +88,7 @@
         <button>Войти</button>
     </form>
 
-    <div class="hint">
-        Стартовые учётки:<br>
-        <b>Передающие цеха:</b><br>
-        <code>ceh10 / ceh10</code><br>
-        <code>adminceh10 / adminceh10</code><br>
-        <code>ceh3 / ceh3</code><br>
-        <code>adminceh3 / adminceh3</code><br>
-        <code>novgorod / novgorod</code><br>
-        <code>adminnovgorod / adminnovgorod</code><br><br>
-        <b>Цех 5:</b><br>
-        <code>ceh5 / ceh5</code><br>
-        <code>adminceh5 / adminceh5</code>
-    </div>
+    <div class="hint">Обратитесь к администратору для получения учётной записи.</div>
 </div>
 </body>
 </html>

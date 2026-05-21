@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import io
-import os
+import secrets
 import sqlite3
 from datetime import datetime
 from pathlib import Path
@@ -294,6 +294,31 @@ def get_pallet_or_404(pallet_id: str) -> sqlite3.Row:
 
 
 
+
+
+def generate_csrf_token() -> str:
+    token = session.get("csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["csrf_token"] = token
+    return token
+
+
+def verify_csrf() -> None:
+    if request.method != "POST":
+        return
+
+    session_token = session.get("csrf_token")
+    form_token = request.form.get("csrf_token", "")
+    if not session_token or not form_token or form_token != session_token:
+        from flask import abort
+        abort(400, description="CSRF token missing or invalid")
+
+
+@app.before_request
+def csrf_protect() -> None:
+    verify_csrf()
+
 def current_user() -> sqlite3.Row | None:
     username = session.get("username")
     if not username:
@@ -391,6 +416,7 @@ def inject_helpers() -> dict[str, Any]:
         "is_source_admin": is_source_admin,
         "is_shop5_user": is_shop5_user,
         "is_shop5_admin": is_shop5_admin,
+        "csrf_token": generate_csrf_token,
     }
 
 
