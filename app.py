@@ -198,7 +198,7 @@ def init_db() -> None:
     """)
     cur.execute("""
         CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_shop5_accept
-        ON movements(pallet_id)
+        ON movements (pallet_id)
         WHERE action = 'Приёмка в цех 5'
     """)
 
@@ -628,6 +628,12 @@ def pallet_detail(pallet_id: str):
         WHERE parent_id = ?
         ORDER BY created_at DESC
     """, (pallet_id,)).fetchall()
+    shop5_accept_exists = conn.execute("""
+        SELECT 1
+        FROM movements
+        WHERE pallet_id = ? AND action = 'Приёмка в цех 5'
+        LIMIT 1
+    """, (pallet_id,)).fetchone() is not None
 
     conn.close()
 
@@ -641,6 +647,7 @@ def pallet_detail(pallet_id: str):
         movements=movements,
         children=children,
         destinations=DESTINATIONS,
+        shop5_accept_exists=shop5_accept_exists,
     )
 
 
