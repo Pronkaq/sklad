@@ -196,6 +196,11 @@ def init_db() -> None:
             comment TEXT
         )
     """)
+    cur.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_shop5_accept
+        ON movements (pallet_id)
+        WHERE action = 'Приёмка в цех 5'
+    """)
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -291,6 +296,16 @@ def get_pallet_or_404(pallet_id: str) -> sqlite3.Row:
         from flask import abort
         abort(404)
     return pallet
+
+
+def can_delete_pallet(user: sqlite3.Row | None, pallet: sqlite3.Row) -> bool:
+    if not user:
+        return False
+    if is_shop5_admin(user):
+        return True
+    if is_source_user(user):
+        return pallet["source_shop"] == user["shop"] and pallet["status"] == "CREATED"
+    return False
 
 
 
@@ -416,6 +431,7 @@ def inject_helpers() -> dict[str, Any]:
         "is_source_admin": is_source_admin,
         "is_shop5_user": is_shop5_user,
         "is_shop5_admin": is_shop5_admin,
+        "can_delete_pallet": can_delete_pallet,
         "csrf_token": generate_csrf_token,
     }
 
@@ -612,6 +628,12 @@ def pallet_detail(pallet_id: str):
         WHERE parent_id = ?
         ORDER BY created_at DESC
     """, (pallet_id,)).fetchall()
+    shop5_accept_exists = conn.execute("""
+        SELECT 1
+        FROM movements
+        WHERE pallet_id = ? AND action = 'Приёмка в цех 5'
+        LIMIT 1
+    """, (pallet_id,)).fetchone() is not None
 
     conn.close()
 
@@ -625,6 +647,7 @@ def pallet_detail(pallet_id: str):
         movements=movements,
         children=children,
         destinations=DESTINATIONS,
+        shop5_accept_exists=shop5_accept_exists,
     )
 
 
@@ -633,26 +656,55 @@ def pallet_detail(pallet_id: str):
 def accept_to_shop5(pallet_id: str):
     user = request.form.get("user", "").strip()
     pallet = get_pallet_or_404(pallet_id)
+    if pallet["status"] != "CREATED":
+        return redirect(url_for("pallet_detail", pallet_id=pallet_id))
 
     conn = get_db()
-    conn.execute("""
-        UPDATE pallets
-        SET status = 'IN_SHOP5_WAREHOUSE',
-            location = 'SHOP5_WAREHOUSE',
-            updated_at = ?
-        WHERE id = ?
-    """, (now_str(), pallet_id))
+    conn.execute("BEGIN IMMEDIATE")
+    existing_accept = conn.execute("""
+        SELECT 1
+        FROM movements
+        WHERE pallet_id = ? AND action = 'Приёмка в цех 5'
+        LIMIT 1
+    """, (pallet_id,)).fetchone()
+    if not existing_accept:
+        conn.execute("""
+            UPDATE pallets
+            SET status = 'IN_SHOP5_WAREHOUSE',
+                location = 'SHOP5_WAREHOUSE',
+                updated_at = ?
+            WHERE id = ?
+        """, (now_str(), pallet_id))
 
-    add_movement(
-        conn, pallet_id, "Приёмка в цех 5",
-        pallet["status"], "IN_SHOP5_WAREHOUSE",
-        pallet["location"], "SHOP5_WAREHOUSE",
-        user
-    )
+        add_movement(
+            conn, pallet_id, "Приёмка в цех 5",
+            pallet["status"], "IN_SHOP5_WAREHOUSE",
+            pallet["location"], "SHOP5_WAREHOUSE",
+            user
+        )
 
     conn.commit()
     conn.close()
     return redirect(url_for("pallet_detail", pallet_id=pallet_id))
+
+
+@app.route("/pallet/<pallet_id>/delete", methods=["POST"])
+@login_required
+def delete_pallet(pallet_id: str):
+    user = current_user()
+    pallet = get_pallet_or_404(pallet_id)
+    if not can_delete_pallet(user, pallet):
+        return render_template(
+            "access_denied.html",
+            message="Удаление этой этикетки вам недоступно."
+        ), 403
+
+    conn = get_db()
+    conn.execute("DELETE FROM movements WHERE pallet_id = ?", (pallet_id,))
+    conn.execute("DELETE FROM pallets WHERE id = ?", (pallet_id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for("index"))
 
 
 @app.route("/pallet/<pallet_id>/send-processing", methods=["POST"])

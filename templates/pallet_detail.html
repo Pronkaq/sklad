@@ -44,7 +44,15 @@
     <p class="muted">
         Для вашего цеха отображается только факт создания/передачи этикетки в цех 5. Что дальше делает цех 5 с поддоном, передающим цехам не показывается.
     </p>
-    <a class="btn" href="{{ url_for('label', pallet_id=pallet.id) }}">Открыть этикетку A5</a>
+    <p>
+        <a class="btn" href="{{ url_for('label', pallet_id=pallet.id) }}">Открыть этикетку A5</a>
+    </p>
+    {% if can_delete_pallet(current_user, pallet) %}
+    <form method="post" action="{{ url_for('delete_pallet', pallet_id=pallet.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="danger" type="submit" onclick="return confirm('Удалить этикетку {{ pallet.id }}?')">Удалить этикетку</button>
+    </form>
+    {% endif %}
 </div>
 {% endif %}
 
@@ -57,9 +65,12 @@
         <form class="small-form" method="post" action="{{ url_for('accept_to_shop5', pallet_id=pallet.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <h3>Принять в цех 5</h3>
+            {% if shop5_accept_exists %}
+            <p class="muted">Эта этикетка уже была принята в цех 5, повторная приёмка заблокирована.</p>
+            {% endif %}
             <label>Кто принимает</label>
-            <input name="user" placeholder="ФИО">
-            <button class="ok">Принять на склад цеха 5</button>
+            <input name="user" placeholder="ФИО" {% if shop5_accept_exists %}disabled{% endif %}>
+            <button class="ok" {% if shop5_accept_exists %}disabled{% endif %}>Принять на склад цеха 5</button>
         </form>
 
         <form class="small-form" method="post" action="{{ url_for('send_processing', pallet_id=pallet.id) }}">
