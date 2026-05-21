@@ -199,9 +199,15 @@ if ('serviceWorker' in navigator) {
 
 let deferredPrompt = null;
 const installBtn = document.getElementById('install-app-btn');
+const INSTALL_DISMISS_KEY = 'pwa-install-dismissed-v1';
+
+function isStandaloneMode() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
 
 window.addEventListener('beforeinstallprompt', (event) => {
   event.preventDefault();
+  if (isStandaloneMode() || localStorage.getItem(INSTALL_DISMISS_KEY) === '1') return;
   deferredPrompt = event;
   if (installBtn) installBtn.style.display = 'inline-block';
 });
@@ -210,11 +216,20 @@ if (installBtn) {
   installBtn.addEventListener('click', async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
+    const result = await deferredPrompt.userChoice;
+    if (result && result.outcome === 'dismissed') {
+      localStorage.setItem(INSTALL_DISMISS_KEY, '1');
+    }
     deferredPrompt = null;
     installBtn.style.display = 'none';
   });
 }
+
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  if (installBtn) installBtn.style.display = 'none';
+  localStorage.removeItem(INSTALL_DISMISS_KEY);
+});
 </script>
 </body>
 </html>

@@ -34,6 +34,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(req)
         .then((response) => {
+          if (!response || response.status !== 200 || response.type !== 'basic') return response;
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
           return response;
@@ -52,6 +53,7 @@ self.addEventListener('fetch', (event) => {
       caches.match(req).then((cached) => {
         if (cached) return cached;
         return fetch(req).then((response) => {
+          if (!response || response.status !== 200 || response.type !== 'basic') return response;
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
           return response;
@@ -64,6 +66,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(req)
       .then((response) => {
+        if (!response || response.status !== 200 || response.type !== 'basic') return response;
         const copy = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
         return response;
