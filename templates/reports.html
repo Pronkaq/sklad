@@ -14,7 +14,8 @@
 
 <div class="card">
     <h2>Поступило в цех 5 за {{ month }}</h2>
-    <table>
+    <div class="table-wrap">
+        <table>
         <thead>
             <tr>
                 <th>Цех-источник</th>
@@ -38,11 +39,13 @@
         {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 
 <div class="card">
     <h2>Обработано за {{ month }}</h2>
-    <table>
+    <div class="table-wrap">
+        <table>
         <thead>
             <tr>
                 <th>Ассортимент после обработки</th>
@@ -68,11 +71,13 @@
         {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 
 <div class="card">
     <h2>После разбраковки за {{ month }}</h2>
-    <table>
+    <div class="table-wrap">
+        <table>
         <thead>
             <tr>
                 <th>Куда ушло</th>
@@ -98,11 +103,13 @@
         {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 
 <div class="card">
     <h2>Продано за {{ month }}</h2>
-    <table>
+    <div class="table-wrap">
+        <table>
         <thead>
             <tr>
                 <th>Ассортимент</th>
@@ -124,11 +131,13 @@
         {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 
 <div class="card">
     <h2>Остатки по двум складам</h2>
-    <table>
+    <div class="table-wrap">
+        <table>
         <thead>
             <tr>
                 <th>Склад</th>
@@ -152,11 +161,13 @@
         {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 
 <div class="card">
     <h2>Все текущие остатки по стадиям</h2>
-    <table>
+    <div class="table-wrap">
+        <table>
         <thead>
             <tr>
                 <th>Статус</th>
@@ -182,5 +193,6 @@
         {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 {% endblock %}
