@@ -4,6 +4,12 @@
     <meta charset="utf-8">
     <title>{{ title or "Учёт поддонов" }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#111827">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+    <link rel="icon" href="{{ url_for('static', filename='icons/icon-192.svg') }}" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.svg') }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <style>
         :root {
             --bg: #f4f6f8;
@@ -107,6 +113,20 @@
             font-size: 13px;
             font-weight: 600;
         }
+        .table-wrap { overflow-x: auto; }
+        .mobile-actions {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: none;
+            gap: 8px;
+            padding: 10px;
+            background: rgba(255,255,255,.95);
+            border-top: 1px solid var(--line);
+            z-index: 20;
+        }
+        .mobile-actions .btn { flex: 1; text-align: center; margin-top: 0; padding: 12px 10px; font-size: 14px; }
         .actions {
             display: flex;
             flex-wrap: wrap;
@@ -121,10 +141,13 @@
             margin-top: 12px;
         }
         @media (max-width: 650px) {
-            main { padding: 12px; }
-            header a { display: inline-block; margin-bottom: 8px; }
+            main { padding: 12px 12px 84px; }
+            header { padding: 10px 12px; }
+            header a { display: inline-block; margin-bottom: 8px; font-size: 14px; }
+            button, .btn, input, select, textarea { min-height: 44px; }
             table { font-size: 13px; }
             th, td { padding: 7px; }
+            .mobile-actions { display: flex; }
         }
     </style>
 </head>
@@ -153,5 +176,17 @@
 <main>
     {% block content %}{% endblock %}
 </main>
+{% if current_user and is_shop5_user(current_user) %}
+<div class="mobile-actions">
+    <a class="btn" href="{{ url_for('scan_page') }}">Сканер</a>
+    <a class="btn secondary" href="{{ url_for('search') }}">Поиск</a>
+    <a class="btn ok" href="{{ url_for('reports_page') }}">Отчёты</a>
+</div>
+{% endif %}
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/static/service-worker.js'));
+}
+</script>
 </body>
 </html>
