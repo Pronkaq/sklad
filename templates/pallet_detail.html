@@ -151,6 +151,7 @@
 {% endif %}
 
 
+{% if current_user and is_shop5_user(current_user) %}
 <div class="card">
     <h2>Продажа / снятие с остатков</h2>
     <form method="post" action="{{ url_for('mark_sold', pallet_id=pallet.id) }}">
@@ -168,6 +169,7 @@
         <button class="danger" type="submit">Отметить продано</button>
     </form>
 </div>
+{% endif %}
 
 {% if children %}
 <div class="card">
