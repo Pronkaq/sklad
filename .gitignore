@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.log
+pallets.db
+pallets.db-wal
+pallets.db-shm
+.env
