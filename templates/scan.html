@@ -61,8 +61,18 @@ function openScannedValue(value) {
     value = String(value).trim();
 
     if (value.startsWith("http://") || value.startsWith("https://")) {
-        window.location.href = value;
-        return;
+        try {
+            const parsed = new URL(value);
+            const match = parsed.pathname.match(/^\/pallet\/([^\/?#]+)$/);
+            if (match && match[1]) {
+                window.location.href = "/pallet/" + encodeURIComponent(match[1]);
+                return;
+            }
+            window.location.href = parsed.pathname + parsed.search + parsed.hash;
+            return;
+        } catch (e) {
+            // Если URL распарсить не удалось — пробуем как ID ниже.
+        }
     }
 
     window.location.href = "/pallet/" + encodeURIComponent(value);
