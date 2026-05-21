@@ -20,6 +20,7 @@
 <div class="card">
     {% if current_user and is_source_user(current_user) %}
         <h2>Сколько ваш цех передал</h2>
+        <div class="table-wrap">
         <table>
             <thead>
                 <tr>
@@ -44,8 +45,10 @@
             {% endfor %}
             </tbody>
         </table>
+    </div>
     {% else %}
         <h2>Остатки</h2>
+        <div class="table-wrap">
         <table>
             <thead>
                 <tr>
@@ -72,13 +75,15 @@
             {% endfor %}
             </tbody>
         </table>
+    </div>
     {% endif %}
 </div>
 
 {% if current_user and is_source_user(current_user) %}
 <div class="card">
     <h2>Итоги по месяцам</h2>
-    <table>
+    <div class="table-wrap">
+        <table>
         <thead>
             <tr>
                 <th>Месяц</th>
@@ -102,12 +107,14 @@
         {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 {% endif %}
 
 <div class="card">
     <h2>{% if current_user and is_source_user(current_user) %}Ваши последние этикетки передачи{% else %}Последние поддоны{% endif %}</h2>
-    <table>
+    <div class="table-wrap">
+        <table>
         <thead>
             <tr>
                 <th>ID</th>
@@ -148,5 +155,6 @@
         {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 {% endblock %}

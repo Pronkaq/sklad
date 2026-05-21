@@ -185,7 +185,8 @@
 {% if children %}
 <div class="card">
     <h2>Дочерние поддоны</h2>
-    <table>
+    <div class="table-wrap">
+        <table>
         <thead>
             <tr>
                 <th>ID</th>
@@ -205,12 +206,14 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 {% endif %}
 
 <div class="card">
     <h2>История движения</h2>
-    <table>
+    <div class="table-wrap">
+        <table>
         <thead>
             <tr>
                 <th>Время</th>
@@ -236,5 +239,6 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 {% endblock %}
