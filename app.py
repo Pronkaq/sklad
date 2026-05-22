@@ -111,6 +111,20 @@ def now_str() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
+def parse_float(value: Any, default: float = 0.0) -> float:
+    if value is None:
+        return default
+
+    normalized = str(value).strip().replace(",", ".")
+    if normalized == "":
+        return default
+
+    try:
+        return float(normalized)
+    except (TypeError, ValueError):
+        return default
+
+
 def get_db() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
