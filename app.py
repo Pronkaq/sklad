@@ -111,6 +111,20 @@ def now_str() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
+def parse_float(value: Any, default: float = 0.0) -> float:
+    if value is None:
+        return default
+
+    normalized = str(value).strip().replace(",", ".")
+    if normalized == "":
+        return default
+
+    try:
+        return float(normalized)
+    except (TypeError, ValueError):
+        return default
+
+
 def get_db() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -590,11 +604,11 @@ def manual_pallet():
                 responsible, status, location, created_by,
                 created_at, updated_at, comment
             )
-            VALUES (?, NULL, 'SHOP5', ?, ?, ?, 'manual_inventory',
+            VALUES (?, NULL, ?, ?, ?, ?, 'manual_inventory',
                     ?, ?, NULL, NULL, NULL, NULL,
                     ?, ?, ?, ?, ?, ?, ?)
         """, (
-            pallet_id, assortment, party_number, item_category,
+            pallet_id, location, assortment, party_number, item_category,
             rolls_count, meters_total,
             responsible, status, location, responsible,
             now_str(), now_str(), comment
