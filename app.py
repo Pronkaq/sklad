@@ -604,11 +604,11 @@ def manual_pallet():
                 responsible, status, location, created_by,
                 created_at, updated_at, comment
             )
-            VALUES (?, NULL, 'SHOP5', ?, ?, ?, 'manual_inventory',
+            VALUES (?, NULL, ?, ?, ?, ?, 'manual_inventory',
                     ?, ?, NULL, NULL, NULL, NULL,
                     ?, ?, ?, ?, ?, ?, ?)
         """, (
-            pallet_id, assortment, party_number, item_category,
+            pallet_id, location, assortment, party_number, item_category,
             rolls_count, meters_total,
             responsible, status, location, responsible,
             now_str(), now_str(), comment
