@@ -1449,7 +1449,8 @@ def experimental_roll_labels():
                 request.form.get("comment", "").strip(),
             ))
         elif action == "build_pallet":
-            selected_roll_ids = request.form.getlist("roll_ids")
+            selected_roll_ids = [rid.strip() for rid in request.form.getlist("roll_ids") if rid.strip()]
+            selected_roll_ids = list(dict.fromkeys(selected_roll_ids))
             if selected_roll_ids:
                 conn.execute("BEGIN IMMEDIATE")
                 placeholders = ",".join(["?"] * len(selected_roll_ids))
@@ -1492,6 +1493,18 @@ def experimental_roll_labels():
                         f"UPDATE roll_labels SET pallet_id = ? WHERE id IN ({approved_placeholders})",
                         (pallet_id, *approved_roll_ids)
                     )
+                    rejected_roll_ids = [rid for rid in selected_roll_ids if rid not in approved_roll_ids]
+                    if rejected_roll_ids:
+                        session["roll_labels_notice"] = (
+                            f"Поддон {pallet_id} собран из {len(approved_roll_ids)} рулонов. "
+                            f"Не добавлены: {', '.join(rejected_roll_ids)} (заняты/недоступны)."
+                        )
+                    else:
+                        session["roll_labels_notice"] = f"Поддон {pallet_id} успешно собран из {len(approved_roll_ids)} рулонов."
+                else:
+                    session["roll_labels_notice"] = "Ни один выбранный рулон не доступен для сборки поддона."
+            else:
+                session["roll_labels_notice"] = "Выберите хотя бы один рулон для сборки поддона."
 
         elif action in ("update_roll", "delete_roll"):
             roll_id = request.form.get("roll_id", "").strip()
@@ -1539,7 +1552,8 @@ def experimental_roll_labels():
         LIMIT 200
     """, (user["shop"],)).fetchall()
     conn.close()
-    return render_template("roll_labels_experimental.html", roll_labels=roll_labels, edit_roll=edit_roll)
+    notice = session.pop("roll_labels_notice", "")
+    return render_template("roll_labels_experimental.html", roll_labels=roll_labels, edit_roll=edit_roll, notice=notice)
 
 
 @app.route("/roll-label/<roll_id>/qr.svg")
