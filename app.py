@@ -261,6 +261,14 @@ def init_db() -> None:
         )
     """)
 
+    # Data-consistency repair: unlink rolls from deleted/non-existent pallets.
+    cur.execute("""
+        UPDATE roll_labels
+        SET pallet_id = NULL
+        WHERE pallet_id IS NOT NULL
+          AND pallet_id NOT IN (SELECT id FROM pallets)
+    """)
+
     conn.commit()
     conn.close()
 
