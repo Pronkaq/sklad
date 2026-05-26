@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>Эксперимент: этикетки рулонов (цех 10)</h2>
+  <p class="muted">Доступ только по прямой ссылке. Формат печати: 2,5 × 1,8 см, печатается только QR.</p>
+  <form method="post" class="grid">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="create_roll">
+    <div><label>Ассортимент</label><input name="assortment" required></div>
+    <div><label>Номер рулона</label><input name="roll_number" required></div>
+    <div><label>Номер партии</label><input name="party_number"></div>
+    <div><label>Номер основы</label><input name="base_number"></div>
+    <div><label>Замасливатель</label><input name="lubricant" value="13"></div>
+    <div><label>Ширина</label><input name="width"></div>
+    <div><label>Кол-во метров</label><input name="meters" type="number" step="0.01" required></div>
+    <div><label>ФИО ткача</label><input name="weaver_name"></div>
+    <div><label>ФИО пом.мастера</label><input name="assistant_name"></div>
+    <div><label>Дата изготовления</label><input name="production_date" type="date"></div>
+    <div style="grid-column:1/-1"><label>Комментарий</label><input name="comment"></div>
+    <div style="grid-column:1/-1"><button type="submit">Создать этикетку рулона</button></div>
+  </form>
+</div>
+
+{% if edit_roll and can_manage_roll_label(current_user, edit_roll) %}
+<div class="card">
+  <h3>Редактировать рулон {{ edit_roll.id }}</h3>
+  <form method="post" class="grid">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="update_roll">
+    <input type="hidden" name="roll_id" value="{{ edit_roll.id }}">
+    <div><label>Ассортимент</label><input name="assortment" value="{{ edit_roll.assortment }}" required></div>
+    <div><label>Номер рулона</label><input name="roll_number" value="{{ edit_roll.roll_number }}" required></div>
+    <div><label>Номер партии</label><input name="party_number" value="{{ edit_roll.party_number or '' }}"></div>
+    <div><label>Номер основы</label><input name="base_number" value="{{ edit_roll.base_number or '' }}"></div>
+    <div><label>Замасливатель</label><input name="lubricant" value="{{ edit_roll.lubricant or '13' }}"></div>
+    <div><label>Ширина</label><input name="width" value="{{ edit_roll.width or '' }}"></div>
+    <div><label>Кол-во метров</label><input name="meters" type="number" step="0.01" value="{{ edit_roll.meters }}" required></div>
+    <div><label>ФИО ткача</label><input name="weaver_name" value="{{ edit_roll.weaver_name or '' }}"></div>
+    <div><label>ФИО пом.мастера</label><input name="assistant_name" value="{{ edit_roll.assistant_name or '' }}"></div>
+    <div><label>Дата изготовления</label><input name="production_date" type="date" value="{{ edit_roll.production_date or '' }}"></div>
+    <div style="grid-column:1/-1"><label>Комментарий</label><input name="comment" value="{{ edit_roll.comment or '' }}"></div>
+    <div style="grid-column:1/-1; display:flex; gap:8px;">
+      <button class="ok" type="submit">Сохранить изменения</button>
+      <a class="btn secondary" href="{{ url_for('experimental_roll_labels') }}">Отмена</a>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<div class="card">
+  <h3>Рулоны</h3>
+  <form id="build-pallet-form" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="build_pallet">
+  </form>
+  <div class="table-wrap">
+      <table>
+        <tr><th></th><th>ID</th><th>Рулон</th><th>Ассортимент</th><th>Партия</th><th>Метры</th><th>QR (2,5×1,8 см)</th><th>Действия</th></tr>
+        {% for r in roll_labels %}
+        <tr>
+          <td>{% if not r.pallet_id %}<input type="checkbox" name="roll_ids" value="{{ r.id }}" form="build-pallet-form">{% endif %}</td>
+          <td>{{ r.id }}</td><td>{{ r.roll_number }}</td><td>{{ r.assortment }}</td><td>{{ r.party_number or '—' }}</td><td>{{ r.meters }}</td>
+          <td><a class="btn secondary" href="{{ url_for('roll_qr_svg', roll_id=r.id) }}" target="_blank" title="Ассортимент: {{ r.assortment }} | Рулон: {{ r.roll_number }} | Партия: {{ r.party_number or '—' }} | Основа: {{ r.base_number or '—' }} | Замасливатель: {{ r.lubricant or '13' }} | Ширина: {{ r.width or '—' }} | Метры: {{ r.meters }} | Ткач: {{ r.weaver_name or '—' }} | Пом. мастера: {{ r.assistant_name or '—' }} | Дата: {{ r.production_date or '—' }}">QR</a></td>
+          <td>
+            {% if can_manage_roll_label(current_user, r) %}
+              <a class="btn secondary" href="{{ url_for('experimental_roll_labels', edit=r.id) }}">Редактировать</a>
+              <form method="post" style="display:inline;" onsubmit="return confirm('Удалить этикетку рулона {{ r.id }}?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="delete_roll">
+                <input type="hidden" name="roll_id" value="{{ r.id }}">
+                <button class="btn" type="submit">Удалить</button>
+              </form>
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    <button class="ok" type="submit" form="build-pallet-form">Собрать поддон из выбранных рулонов</button>
+</div>
+{% endblock %}
