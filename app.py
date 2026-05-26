@@ -331,6 +331,21 @@ def get_assortments(category: str | None = None) -> list[sqlite3.Row]:
     return rows
 
 
+
+
+def next_pallet_id_tx(conn: sqlite3.Connection, prefix: str = "P") -> str:
+    year = datetime.now().year
+    cur = conn.cursor()
+    cur.execute("SELECT value FROM counters WHERE year = ?", (year,))
+    row = cur.fetchone()
+    if row is None:
+        value = 1
+        cur.execute("INSERT INTO counters(year, value) VALUES(?, ?)", (year, value))
+    else:
+        value = row["value"] + 1
+        cur.execute("UPDATE counters SET value = ? WHERE year = ?", (value, year))
+    return f"{prefix}-{year}-{value:05d}"
+
 def get_pallet_or_404(pallet_id: str) -> sqlite3.Row:
     conn = get_db()
     pallet = conn.execute("SELECT * FROM pallets WHERE id = ?", (pallet_id,)).fetchone()
@@ -1418,13 +1433,26 @@ def experimental_roll_labels():
         elif action == "build_pallet":
             selected_roll_ids = request.form.getlist("roll_ids")
             if selected_roll_ids:
+                conn.execute("BEGIN IMMEDIATE")
                 placeholders = ",".join(["?"] * len(selected_roll_ids))
                 rows = conn.execute(
                     f"SELECT * FROM roll_labels WHERE id IN ({placeholders}) AND source_shop = ? AND pallet_id IS NULL",
                     (*selected_roll_ids, user["shop"])
                 ).fetchall()
                 if rows:
-                    pallet_id = next_pallet_id("P")
+                    signature_pairs = {(r["assortment"], (r["party_number"] or "")) for r in rows}
+                    if len(signature_pairs) != 1:
+                        conn.rollback()
+                        conn.close()
+                        return render_template(
+                            "access_denied.html",
+                            message="Нельзя собрать один поддон из рулонов с разными ассортиментом или номером партии."
+                        ), 400
+
+                    rows = sorted(rows, key=lambda r: r["id"])
+                    approved_roll_ids = [r["id"] for r in rows]
+                    approved_placeholders = ",".join(["?"] * len(approved_roll_ids))
+                    pallet_id = next_pallet_id_tx(conn, "P")
                     total_meters = sum(parse_float(r["meters"], 0) for r in rows)
                     assortment = rows[0]["assortment"]
                     party_number = rows[0]["party_number"] or ""
@@ -1439,10 +1467,13 @@ def experimental_roll_labels():
                     """, (
                         pallet_id, user["shop"], assortment, party_number, len(rows), total_meters,
                         rows[0]["production_date"] or "", responsible, user["shop"], responsible,
-                        now_str(), now_str(), f"Собран из рулонов: {', '.join(selected_roll_ids)}"
+                        now_str(), now_str(), f"Собран из рулонов: {', '.join(approved_roll_ids)}"
                     ))
                     add_movement(conn, pallet_id, "Сборка поддона из рулонов", None, "CREATED", None, user["shop"], responsible)
-                    conn.execute(f"UPDATE roll_labels SET pallet_id = ? WHERE id IN ({placeholders})", (pallet_id, *selected_roll_ids))
+                    conn.execute(
+                        f"UPDATE roll_labels SET pallet_id = ? WHERE id IN ({approved_placeholders})",
+                        (pallet_id, *approved_roll_ids)
+                    )
 
         conn.commit()
         conn.close()
