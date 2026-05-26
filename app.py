@@ -441,6 +441,22 @@ def can_view_roll_label(user: sqlite3.Row | None, roll: sqlite3.Row | None) -> b
     return bool(is_shop5_user(user) or roll["source_shop"] == user["shop"])
 
 
+def can_manage_roll_label(user: sqlite3.Row | None, roll: sqlite3.Row | None) -> bool:
+    if not user or not roll:
+        return False
+    if not is_shop10_user(user):
+        return False
+    if roll["source_shop"] != user["shop"]:
+        return False
+    if roll["pallet_id"]:
+        return False
+    try:
+        created_at = datetime.strptime(roll["created_at"], "%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return False
+    return (datetime.now() - created_at) <= timedelta(days=1)
+
+
 def shop5_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
@@ -500,6 +516,7 @@ def inject_helpers() -> dict[str, Any]:
         "is_shop5_user": is_shop5_user,
         "is_shop5_admin": is_shop5_admin,
         "is_shop10_user": is_shop10_user,
+        "can_manage_roll_label": can_manage_roll_label,
         "can_delete_pallet": can_delete_pallet,
         "csrf_token": generate_csrf_token,
     }
@@ -1476,9 +1493,44 @@ def experimental_roll_labels():
                         (pallet_id, *approved_roll_ids)
                     )
 
+        elif action in ("update_roll", "delete_roll"):
+            roll_id = request.form.get("roll_id", "").strip()
+            roll = conn.execute("SELECT * FROM roll_labels WHERE id = ?", (roll_id,)).fetchone()
+            if not can_manage_roll_label(user, roll):
+                conn.rollback()
+                conn.close()
+                return render_template("access_denied.html", message="Редактирование/удаление доступно только в течение 1 дня для свободных рулонов цеха 10."), 403
+            if action == "delete_roll":
+                conn.execute("DELETE FROM roll_labels WHERE id = ?", (roll_id,))
+            else:
+                conn.execute("""
+                    UPDATE roll_labels
+                    SET assortment = ?, roll_number = ?, party_number = ?, base_number = ?, lubricant = ?,
+                        width = ?, meters = ?, weaver_name = ?, assistant_name = ?, production_date = ?, comment = ?
+                    WHERE id = ?
+                """, (
+                    request.form.get("assortment", "").strip(),
+                    request.form.get("roll_number", "").strip(),
+                    request.form.get("party_number", "").strip(),
+                    request.form.get("base_number", "").strip(),
+                    request.form.get("lubricant", "13").strip() or "13",
+                    request.form.get("width", "").strip(),
+                    parse_float(request.form.get("meters"), 0),
+                    request.form.get("weaver_name", "").strip(),
+                    request.form.get("assistant_name", "").strip(),
+                    request.form.get("production_date") or "",
+                    request.form.get("comment", "").strip(),
+                    roll_id,
+                ))
+
         conn.commit()
         conn.close()
         return redirect(url_for("experimental_roll_labels"))
+
+    edit_roll_id = request.args.get("edit", "").strip()
+    edit_roll = None
+    if edit_roll_id:
+        edit_roll = conn.execute("SELECT * FROM roll_labels WHERE id = ? AND source_shop = ?", (edit_roll_id, user["shop"])).fetchone()
 
     roll_labels = conn.execute("""
         SELECT * FROM roll_labels
@@ -1487,7 +1539,7 @@ def experimental_roll_labels():
         LIMIT 200
     """, (user["shop"],)).fetchall()
     conn.close()
-    return render_template("roll_labels_experimental.html", roll_labels=roll_labels)
+    return render_template("roll_labels_experimental.html", roll_labels=roll_labels, edit_roll=edit_roll)
 
 
 @app.route("/roll-label/<roll_id>/qr.svg")
