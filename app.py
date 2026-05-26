@@ -499,6 +499,7 @@ def inject_helpers() -> dict[str, Any]:
         "is_source_admin": is_source_admin,
         "is_shop5_user": is_shop5_user,
         "is_shop5_admin": is_shop5_admin,
+        "is_shop10_user": is_shop10_user,
         "can_delete_pallet": can_delete_pallet,
         "csrf_token": generate_csrf_token,
     }
