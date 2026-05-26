@@ -412,6 +412,12 @@ def is_shop10_user(user: sqlite3.Row | None) -> bool:
     return bool(user and user["shop"] == "SHOP10")
 
 
+def can_view_roll_label(user: sqlite3.Row | None, roll: sqlite3.Row | None) -> bool:
+    if not user or not roll:
+        return False
+    return bool(is_shop5_user(user) or roll["source_shop"] == user["shop"])
+
+
 def shop5_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
@@ -1404,7 +1410,10 @@ def experimental_roll_labels():
             selected_roll_ids = request.form.getlist("roll_ids")
             if selected_roll_ids:
                 placeholders = ",".join(["?"] * len(selected_roll_ids))
-                rows = conn.execute(f"SELECT * FROM roll_labels WHERE id IN ({placeholders}) AND source_shop = ?", (*selected_roll_ids, user["shop"])).fetchall()
+                rows = conn.execute(
+                    f"SELECT * FROM roll_labels WHERE id IN ({placeholders}) AND source_shop = ? AND pallet_id IS NULL",
+                    (*selected_roll_ids, user["shop"])
+                ).fetchall()
                 if rows:
                     pallet_id = next_pallet_id("P")
                     total_meters = sum(parse_float(r["meters"], 0) for r in rows)
@@ -1417,7 +1426,7 @@ def experimental_roll_labels():
                             production_date, processing_date, process_type, machine, responsible, status, location, created_by,
                             created_at, updated_at, comment
                         )
-                        VALUES (?, NULL, ?, ?, ?, 'fabric', 'roll_assembly', ?, ?, ?, NULL, NULL, NULL, ?, 'CREATED', ?, ?, ?, ?, ?)
+                        VALUES (?, NULL, ?, ?, ?, 'fabric', 'production_transfer', ?, ?, ?, NULL, NULL, NULL, ?, 'CREATED', ?, ?, ?, ?, ?)
                     """, (
                         pallet_id, user["shop"], assortment, party_number, len(rows), total_meters,
                         rows[0]["production_date"] or "", responsible, user["shop"], responsible,
@@ -1447,28 +1456,31 @@ def roll_qr_svg(roll_id: str):
     conn = get_db()
     roll = conn.execute("SELECT * FROM roll_labels WHERE id = ?", (roll_id,)).fetchone()
     conn.close()
-    if not roll or not user or roll["source_shop"] != user["shop"]:
+    if not can_view_roll_label(user, roll):
         from flask import abort
         abort(404)
 
-    payload = "\n".join([
-        f"Ассортимент: {roll['assortment']}",
-        f"Номер рулона: {roll['roll_number']}",
-        f"Номер партии: {roll['party_number'] or '—'}",
-        f"Номер основы: {roll['base_number'] or '—'}",
-        f"Замасливатель: {roll['lubricant'] or '13'}",
-        f"Ширина: {roll['width'] or '—'}",
-        f"Кол-во метров: {roll['meters']}",
-        f"ФИО ткача: {roll['weaver_name'] or '—'}",
-        f"ФИО пом. мастера: {roll['assistant_name'] or '—'}",
-        f"Дата изготовления: {roll['production_date'] or '—'}",
-    ])
+    host_url = request.host_url.rstrip("/")
+    payload = f"{host_url}{url_for('roll_label_detail', roll_id=roll_id)}"
 
     img = qrcode.make(payload, image_factory=qrcode.image.svg.SvgImage)
     buf = io.BytesIO()
     img.save(buf)
     buf.seek(0)
     return Response(buf.getvalue(), mimetype="image/svg+xml")
+
+
+@app.route("/roll-label/<roll_id>")
+@login_required
+def roll_label_detail(roll_id: str):
+    user = current_user()
+    conn = get_db()
+    roll = conn.execute("SELECT * FROM roll_labels WHERE id = ?", (roll_id,)).fetchone()
+    conn.close()
+    if not can_view_roll_label(user, roll):
+        from flask import abort
+        abort(404)
+    return render_template("roll_label_detail.html", roll=roll)
 
 
 # Auto-init database on import for Gunicorn/systemd.
