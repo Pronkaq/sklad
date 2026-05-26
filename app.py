@@ -745,6 +745,7 @@ def delete_pallet(pallet_id: str):
         ), 403
 
     conn = get_db()
+    conn.execute("UPDATE roll_labels SET pallet_id = NULL WHERE pallet_id = ?", (pallet_id,))
     conn.execute("DELETE FROM movements WHERE pallet_id = ?", (pallet_id,))
     conn.execute("DELETE FROM pallets WHERE id = ?", (pallet_id,))
     conn.commit()
