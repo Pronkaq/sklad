@@ -240,6 +240,27 @@ def init_db() -> None:
         )
     """)
 
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS roll_labels (
+            id TEXT PRIMARY KEY,
+            source_shop TEXT NOT NULL,
+            assortment TEXT NOT NULL,
+            roll_number TEXT NOT NULL,
+            party_number TEXT,
+            base_number TEXT,
+            lubricant TEXT,
+            width TEXT,
+            meters REAL NOT NULL,
+            weaver_name TEXT,
+            assistant_name TEXT,
+            production_date TEXT,
+            created_by TEXT,
+            created_at TEXT NOT NULL,
+            pallet_id TEXT,
+            comment TEXT
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -385,6 +406,10 @@ def is_shop5_user(user: sqlite3.Row | None) -> bool:
 
 def is_shop5_admin(user: sqlite3.Row | None) -> bool:
     return bool(user and user["role"] == "shop5_admin")
+
+
+def is_shop10_user(user: sqlite3.Row | None) -> bool:
+    return bool(user and user["shop"] == "SHOP10")
 
 
 def shop5_required(view):
@@ -1337,6 +1362,113 @@ def search():
 @login_required
 def scan_page():
     return render_template("scan.html")
+
+
+@app.route("/exp/shop10/roll-labels", methods=["GET", "POST"])
+@login_required
+def experimental_roll_labels():
+    user = current_user()
+    if not is_shop10_user(user):
+        return render_template("access_denied.html", message="Экспериментальная вкладка доступна только цеху 10."), 403
+
+    conn = get_db()
+
+    if request.method == "POST":
+        action = request.form.get("action", "create_roll")
+        if action == "create_roll":
+            roll_id = next_pallet_id("RL")
+            conn.execute("""
+                INSERT INTO roll_labels(
+                    id, source_shop, assortment, roll_number, party_number, base_number, lubricant,
+                    width, meters, weaver_name, assistant_name, production_date, created_by, created_at, comment
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                roll_id,
+                user["shop"],
+                request.form.get("assortment", "").strip(),
+                request.form.get("roll_number", "").strip(),
+                request.form.get("party_number", "").strip(),
+                request.form.get("base_number", "").strip(),
+                request.form.get("lubricant", "13").strip() or "13",
+                request.form.get("width", "").strip(),
+                parse_float(request.form.get("meters"), 0),
+                request.form.get("weaver_name", "").strip(),
+                request.form.get("assistant_name", "").strip(),
+                request.form.get("production_date") or "",
+                user["display_name"],
+                now_str(),
+                request.form.get("comment", "").strip(),
+            ))
+        elif action == "build_pallet":
+            selected_roll_ids = request.form.getlist("roll_ids")
+            if selected_roll_ids:
+                placeholders = ",".join(["?"] * len(selected_roll_ids))
+                rows = conn.execute(f"SELECT * FROM roll_labels WHERE id IN ({placeholders}) AND source_shop = ?", (*selected_roll_ids, user["shop"])).fetchall()
+                if rows:
+                    pallet_id = next_pallet_id("P")
+                    total_meters = sum(parse_float(r["meters"], 0) for r in rows)
+                    assortment = rows[0]["assortment"]
+                    party_number = rows[0]["party_number"] or ""
+                    responsible = user["display_name"]
+                    conn.execute("""
+                        INSERT INTO pallets(
+                            id, parent_id, source_shop, assortment, party_number, item_category, created_reason, rolls_count, meters_total,
+                            production_date, processing_date, process_type, machine, responsible, status, location, created_by,
+                            created_at, updated_at, comment
+                        )
+                        VALUES (?, NULL, ?, ?, ?, 'fabric', 'roll_assembly', ?, ?, ?, NULL, NULL, NULL, ?, 'CREATED', ?, ?, ?, ?, ?)
+                    """, (
+                        pallet_id, user["shop"], assortment, party_number, len(rows), total_meters,
+                        rows[0]["production_date"] or "", responsible, user["shop"], responsible,
+                        now_str(), now_str(), f"Собран из рулонов: {', '.join(selected_roll_ids)}"
+                    ))
+                    add_movement(conn, pallet_id, "Сборка поддона из рулонов", None, "CREATED", None, user["shop"], responsible)
+                    conn.execute(f"UPDATE roll_labels SET pallet_id = ? WHERE id IN ({placeholders})", (pallet_id, *selected_roll_ids))
+
+        conn.commit()
+        conn.close()
+        return redirect(url_for("experimental_roll_labels"))
+
+    roll_labels = conn.execute("""
+        SELECT * FROM roll_labels
+        WHERE source_shop = ?
+        ORDER BY created_at DESC
+        LIMIT 200
+    """, (user["shop"],)).fetchall()
+    conn.close()
+    return render_template("roll_labels_experimental.html", roll_labels=roll_labels)
+
+
+@app.route("/roll-label/<roll_id>/qr.svg")
+@login_required
+def roll_qr_svg(roll_id: str):
+    user = current_user()
+    conn = get_db()
+    roll = conn.execute("SELECT * FROM roll_labels WHERE id = ?", (roll_id,)).fetchone()
+    conn.close()
+    if not roll or not user or roll["source_shop"] != user["shop"]:
+        from flask import abort
+        abort(404)
+
+    payload = "\n".join([
+        f"Ассортимент: {roll['assortment']}",
+        f"Номер рулона: {roll['roll_number']}",
+        f"Номер партии: {roll['party_number'] or '—'}",
+        f"Номер основы: {roll['base_number'] or '—'}",
+        f"Замасливатель: {roll['lubricant'] or '13'}",
+        f"Ширина: {roll['width'] or '—'}",
+        f"Кол-во метров: {roll['meters']}",
+        f"ФИО ткача: {roll['weaver_name'] or '—'}",
+        f"ФИО пом. мастера: {roll['assistant_name'] or '—'}",
+        f"Дата изготовления: {roll['production_date'] or '—'}",
+    ])
+
+    img = qrcode.make(payload, image_factory=qrcode.image.svg.SvgImage)
+    buf = io.BytesIO()
+    img.save(buf)
+    buf.seek(0)
+    return Response(buf.getvalue(), mimetype="image/svg+xml")
 
 
 # Auto-init database on import for Gunicorn/systemd.
