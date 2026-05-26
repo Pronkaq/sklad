@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Рулон {{ roll.id }}</title>
   <style>
-    @page { size: A6 portrait; margin: 5mm; }
-    body { font-family: Arial, sans-serif; margin: 0; padding: 12px; background: #f5f5f5; }
+    @page { size: 2.5cm 1.8cm; margin: 0; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 6px; background: #f5f5f5; }
     .card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 12px; }
     .row { margin: 4px 0; font-size: 14px; }
     .actions { margin-bottom: 8px; display:flex; gap:8px; }
     .btn { display:inline-block; padding:8px 10px; background:#2563eb; color:#fff; text-decoration:none; border-radius:8px; }
-    .qr-only { display:none; text-align:center; padding-top:8mm; }
-    .qr-only img { width:70mm; height:70mm; }
+    .qr-only { display:none; width:2.5cm; height:1.8cm; overflow:hidden; }
+    .qr-only img { width:1.8cm; height:1.8cm; display:block; margin:0 auto; }
     @media print {
       .actions, .card { display:none; }
       .qr-only { display:block; }
@@ -22,7 +22,7 @@
 </head>
 <body>
   <div class="actions">
-    <button class="btn" onclick="window.print()">Печать (только QR)</button>
+    <button class="btn" onclick="window.print()">Печать (QR 2,5×1,8 см)</button>
     <a class="btn" href="/">Главная</a>
   </div>
   <div class="card">
@@ -37,7 +37,7 @@
     <div class="row"><b>ФИО ткача:</b> {{ roll.weaver_name or '—' }}</div>
     <div class="row"><b>ФИО пом. мастера:</b> {{ roll.assistant_name or '—' }}</div>
     <div class="row"><b>Дата изготовления:</b> {{ roll.production_date or '—' }}</div>
-    <div class="row"><img src="{{ url_for('roll_qr_svg', roll_id=roll.id) }}" alt="QR" style="width:38mm;height:38mm;"></div>
+    <div class="row"><img src="{{ url_for('roll_qr_svg', roll_id=roll.id) }}" alt="QR" style="width:24mm;height:24mm;"></div>
   </div>
   <div class="qr-only">
     <img src="{{ url_for('roll_qr_svg', roll_id=roll.id) }}" alt="QR">

@@ -2,7 +2,7 @@
 {% block content %}
 <div class="card">
   <h2>Эксперимент: этикетки рулонов (цех 10)</h2>
-  <p class="muted">Доступ только по прямой ссылке. Формат печати: A6, печатается только QR.</p>
+  <p class="muted">Доступ только по прямой ссылке. Формат печати: 2,5 × 1,8 см, печатается только QR.</p>
   <form method="post" class="grid">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="action" value="create_roll">
@@ -28,7 +28,7 @@
     <input type="hidden" name="action" value="build_pallet">
     <div class="table-wrap">
       <table>
-        <tr><th></th><th>ID</th><th>Рулон</th><th>Ассортимент</th><th>Партия</th><th>Метры</th><th>QR (A6)</th></tr>
+        <tr><th></th><th>ID</th><th>Рулон</th><th>Ассортимент</th><th>Партия</th><th>Метры</th><th>QR (2,5×1,8 см)</th></tr>
         {% for r in roll_labels %}
         <tr>
           <td>{% if not r.pallet_id %}<input type="checkbox" name="roll_ids" value="{{ r.id }}">{% endif %}</td>
