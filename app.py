@@ -344,7 +344,7 @@ def next_pallet_id_tx(conn: sqlite3.Connection, prefix: str = "P") -> str:
     else:
         value = row["value"] + 1
         cur.execute("UPDATE counters SET value = ? WHERE year = ?", (value, year))
-    return f"{prefix}-{year}-{value:05d}"
+    return f"{prefix}-{year}-{value:06d}"
 
 def get_pallet_or_404(pallet_id: str) -> sqlite3.Row:
     conn = get_db()
