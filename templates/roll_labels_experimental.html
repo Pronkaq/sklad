@@ -49,15 +49,16 @@
 
 <div class="card">
   <h3>Рулоны</h3>
-  <form method="post">
+  <form id="build-pallet-form" method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="action" value="build_pallet">
-    <div class="table-wrap">
+  </form>
+  <div class="table-wrap">
       <table>
         <tr><th></th><th>ID</th><th>Рулон</th><th>Ассортимент</th><th>Партия</th><th>Метры</th><th>QR (2,5×1,8 см)</th><th>Действия</th></tr>
         {% for r in roll_labels %}
         <tr>
-          <td>{% if not r.pallet_id %}<input type="checkbox" name="roll_ids" value="{{ r.id }}">{% endif %}</td>
+          <td>{% if not r.pallet_id %}<input type="checkbox" name="roll_ids" value="{{ r.id }}" form="build-pallet-form">{% endif %}</td>
           <td>{{ r.id }}</td><td>{{ r.roll_number }}</td><td>{{ r.assortment }}</td><td>{{ r.party_number or '—' }}</td><td>{{ r.meters }}</td>
           <td><a class="btn secondary" href="{{ url_for('roll_qr_svg', roll_id=r.id) }}" target="_blank" title="Ассортимент: {{ r.assortment }} | Рулон: {{ r.roll_number }} | Партия: {{ r.party_number or '—' }} | Основа: {{ r.base_number or '—' }} | Замасливатель: {{ r.lubricant or '13' }} | Ширина: {{ r.width or '—' }} | Метры: {{ r.meters }} | Ткач: {{ r.weaver_name or '—' }} | Пом. мастера: {{ r.assistant_name or '—' }} | Дата: {{ r.production_date or '—' }}">QR</a></td>
           <td>
@@ -77,7 +78,6 @@
         {% endfor %}
       </table>
     </div>
-    <button class="ok" type="submit">Собрать поддон из выбранных рулонов</button>
-  </form>
+    <button class="ok" type="submit" form="build-pallet-form">Собрать поддон из выбранных рулонов</button>
 </div>
 {% endblock %}
