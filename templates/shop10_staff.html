@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>Персонал цеха 10</h2>
+  <p class="muted">Добавляйте/удаляйте ткачей и пом. мастеров. Эти списки используются в этикетках рулонов.</p>
+  <p><a class="btn secondary" href="{{ url_for('experimental_roll_labels') }}">К этикеткам рулонов</a></p>
+  <form method="post" class="grid">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="add_staff">
+    <div><label>Роль</label><select name="role" required><option value="weaver">Ткач</option><option value="assistant">Пом. мастера</option></select></div>
+    <div><label>ФИО</label><input name="full_name" required></div>
+    <div><button type="submit">Добавить</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Список персонала</h3>
+  <div class="table-wrap">
+    <table>
+      <tr><th>Роль</th><th>ФИО</th><th>Действие</th></tr>
+      {% for s in staff %}
+      <tr>
+        <td>{% if s.role == 'weaver' %}Ткач{% else %}Пом. мастера{% endif %}</td>
+        <td>{{ s.full_name }}</td>
+        <td>
+          <form method="post" style="display:inline;" onsubmit="return confirm('Удалить сотрудника {{ s.full_name }}?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="delete_staff">
+            <input type="hidden" name="role" value="{{ s.role }}">
+            <input type="hidden" name="full_name" value="{{ s.full_name }}">
+            <button class="btn danger" type="submit">Удалить</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" class="muted">Список пуст.</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}
