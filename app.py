@@ -261,12 +261,28 @@ def init_db() -> None:
             width TEXT,
             meters REAL NOT NULL,
             weaver_name TEXT,
+            weaver_name_2 TEXT,
             assistant_name TEXT,
             production_date TEXT,
             created_by TEXT,
             created_at TEXT NOT NULL,
             pallet_id TEXT,
             comment TEXT
+        )
+    """)
+    try:
+        cur.execute("ALTER TABLE roll_labels ADD COLUMN weaver_name_2 TEXT")
+    except sqlite3.OperationalError:
+        pass
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS shop10_staff (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            role TEXT NOT NULL CHECK(role IN ('weaver', 'assistant')),
+            full_name TEXT NOT NULL,
+            active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL,
+            UNIQUE(role, full_name)
         )
     """)
 
@@ -1518,9 +1534,9 @@ def experimental_roll_labels():
             conn.execute("""
                 INSERT INTO roll_labels(
                     id, source_shop, assortment, roll_number, party_number, base_number, lubricant,
-                    width, meters, weaver_name, assistant_name, production_date, created_by, created_at, comment
+                    width, meters, weaver_name, weaver_name_2, assistant_name, production_date, created_by, created_at, comment
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 roll_id,
                 user["shop"],
@@ -1532,6 +1548,7 @@ def experimental_roll_labels():
                 request.form.get("width", "").strip(),
                 parse_float(request.form.get("meters"), 0),
                 request.form.get("weaver_name", "").strip(),
+                request.form.get("weaver_name_2", "").strip(),
                 request.form.get("assistant_name", "").strip(),
                 request.form.get("production_date") or "",
                 user["display_name"],
@@ -1596,7 +1613,7 @@ def experimental_roll_labels():
                 conn.execute("""
                     UPDATE roll_labels
                     SET assortment = ?, roll_number = ?, party_number = ?, base_number = ?, lubricant = ?,
-                        width = ?, meters = ?, weaver_name = ?, assistant_name = ?, production_date = ?, comment = ?
+                        width = ?, meters = ?, weaver_name = ?, weaver_name_2 = ?, assistant_name = ?, production_date = ?, comment = ?
                     WHERE id = ?
                 """, (
                     request.form.get("assortment", "").strip(),
@@ -1607,12 +1624,12 @@ def experimental_roll_labels():
                     request.form.get("width", "").strip(),
                     parse_float(request.form.get("meters"), 0),
                     request.form.get("weaver_name", "").strip(),
+                    request.form.get("weaver_name_2", "").strip(),
                     request.form.get("assistant_name", "").strip(),
                     request.form.get("production_date") or "",
                     request.form.get("comment", "").strip(),
                     roll_id,
                 ))
-
         conn.commit()
         conn.close()
         return redirect(url_for("experimental_roll_labels"))
@@ -1628,8 +1645,51 @@ def experimental_roll_labels():
         ORDER BY created_at DESC
         LIMIT 200
     """, (user["shop"],)).fetchall()
+    weavers = conn.execute(
+        "SELECT full_name FROM shop10_staff WHERE role = 'weaver' AND active = 1 ORDER BY full_name"
+    ).fetchall()
+    assistants = conn.execute(
+        "SELECT full_name FROM shop10_staff WHERE role = 'assistant' AND active = 1 ORDER BY full_name"
+    ).fetchall()
     conn.close()
-    return render_template("roll_labels_experimental.html", roll_labels=roll_labels, edit_roll=edit_roll)
+    return render_template(
+        "roll_labels_experimental.html",
+        roll_labels=roll_labels,
+        edit_roll=edit_roll,
+        weavers=weavers,
+        assistants=assistants,
+    )
+
+
+@app.route("/exp/shop10/staff", methods=["GET", "POST"])
+@login_required
+def shop10_staff_page():
+    user = current_user()
+    if not is_shop10_user(user):
+        return render_template("access_denied.html", message="Вкладка персонала доступна только цеху 10."), 403
+
+    conn = get_db()
+    if request.method == "POST":
+        action = request.form.get("action", "").strip()
+        role = request.form.get("role", "").strip()
+        full_name = request.form.get("full_name", "").strip()
+        if role in ("weaver", "assistant") and full_name:
+            if action == "add_staff":
+                conn.execute(
+                    "INSERT OR IGNORE INTO shop10_staff(role, full_name, active, created_at) VALUES (?, ?, 1, ?)",
+                    (role, full_name, now_str()),
+                )
+            elif action == "delete_staff":
+                conn.execute("DELETE FROM shop10_staff WHERE role = ? AND full_name = ?", (role, full_name))
+        conn.commit()
+        conn.close()
+        return redirect(url_for("shop10_staff_page"))
+
+    staff = conn.execute(
+        "SELECT role, full_name FROM shop10_staff WHERE active = 1 ORDER BY role, full_name"
+    ).fetchall()
+    conn.close()
+    return render_template("shop10_staff.html", staff=staff)
 
 
 @app.route("/roll-label/<roll_id>/qr.svg")
