@@ -2,8 +2,7 @@
 {% block content %}
 <div class="card">
   <h2>Эксперимент: этикетки рулонов (цех 10)</h2>
-  <p class="muted">Доступ только по прямой ссылке. Формат печати: 2,5 × 1,8 см, печатается только QR.</p>
-  {% if notice %}<p style="background:#ecfeff; border:1px solid #06b6d4; padding:8px 10px; border-radius:10px;">{{ notice }}</p>{% endif %}
+  <p class="muted">Доступ только по прямой ссылке. Формат печати: A5, печатается полная этикетка (вся информация + QR снизу).</p>
   <form method="post" class="grid">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="action" value="create_roll">
@@ -50,32 +49,13 @@
 
 <div class="card">
   <h3>Рулоны</h3>
-  <p class="muted">Можно выбрать рулоны вручную или отсканировать несколько QR подряд.</p>
-
-  <div id="scan-panel" class="small-form" style="margin-bottom:12px;">
-    <div id="scan-https-warning" style="display:none; background:#fff7ed; padding:8px 10px; border-radius:10px; margin-bottom:8px;">
-      <b>Камера может не запуститься по HTTP.</b>
-    </div>
-    <div id="scan-lib-warning" style="display:none; background:#fee2e2; padding:8px 10px; border-radius:10px; margin-bottom:8px;">
-      <b>Не загрузилась библиотека сканера.</b>
-    </div>
-    <video id="roll-scan-preview" autoplay muted playsinline style="display:none; width:100%; max-width:560px; border-radius:14px; background:#111; margin-bottom:8px;"></video>
-    <p id="roll-scan-status" class="muted">Нажми «Сканировать рулоны», наведи на QR-коды, затем нажми «Собрать поддон».</p>
-    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-      <button id="roll-scan-start" type="button" class="secondary">Сканировать рулоны</button>
-      <button id="roll-scan-stop" type="button" class="secondary" style="display:none;">Остановить сканер</button>
-      <button id="roll-scan-clear" type="button" class="secondary">Очистить выбор</button>
-    </div>
-    <p id="roll-scan-picked" class="muted" style="margin-top:8px;">Отсканировано: —</p>
-  </div>
-
   <form id="build-pallet-form" method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="action" value="build_pallet">
   </form>
   <div class="table-wrap">
       <table>
-        <tr><th></th><th>ID</th><th>Рулон</th><th>Ассортимент</th><th>Партия</th><th>Метры</th><th>QR (2,5×1,8 см)</th><th>Действия</th></tr>
+        <tr><th></th><th>ID</th><th>Рулон</th><th>Ассортимент</th><th>Партия</th><th>Метры</th><th>Этикетка A5</th><th>Действия</th></tr>
         {% for r in roll_labels %}
         <tr>
           <td>{% if not r.pallet_id %}<input type="checkbox" name="roll_ids" value="{{ r.id }}" form="build-pallet-form">{% endif %}</td>
@@ -100,137 +80,4 @@
     </div>
     <button class="ok" type="submit" form="build-pallet-form">Собрать поддон из выбранных рулонов</button>
 </div>
-
-<script src="https://unpkg.com/@zxing/browser@latest"></script>
-<script>
-const rollScanVideo = document.getElementById("roll-scan-preview");
-const rollScanStatus = document.getElementById("roll-scan-status");
-const rollScanStartBtn = document.getElementById("roll-scan-start");
-const rollScanStopBtn = document.getElementById("roll-scan-stop");
-const scanHttpsWarning = document.getElementById("scan-https-warning");
-const scanLibWarning = document.getElementById("scan-lib-warning");
-
-let rollCodeReader = null;
-let rollControls = null;
-let lastScanValue = "";
-let lastScanTime = 0;
-const scannedSet = new Set();
-
-if (location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
-  scanHttpsWarning.style.display = "block";
-}
-
-function extractRollId(value) {
-  const raw = String(value || "").trim();
-  if (!raw) return "";
-
-  if (raw.startsWith("http://") || raw.startsWith("https://")) {
-    try {
-      const parsed = new URL(raw);
-      const match = parsed.pathname.match(/^\/roll-label\/([^\/?#]+)$/);
-      return match && match[1] ? match[1] : "";
-    } catch (e) {
-      return "";
-    }
-  }
-
-  const shortMatch = raw.match(/^RL-\d{4}-\d+$/i);
-  return shortMatch ? raw : "";
-}
-
-function refreshPickedText() {
-  const label = document.getElementById("roll-scan-picked");
-  if (!scannedSet.size) {
-    label.textContent = "Отсканировано: —";
-    return;
-  }
-  label.textContent = "Отсканировано: " + Array.from(scannedSet).join(", ");
-}
-
-function selectRollCheckboxById(rollId) {
-  const checkbox = document.querySelector(`input[name="roll_ids"][value="${CSS.escape(rollId)}"]`);
-  if (!checkbox) return false;
-  checkbox.checked = true;
-  return true;
-}
-
-async function startRollScanner() {
-  if (!window.ZXingBrowser) {
-    scanLibWarning.style.display = "block";
-    rollScanStatus.textContent = "Библиотека сканера не загрузилась.";
-    return;
-  }
-
-  try {
-    rollScanStatus.textContent = "Запрашиваю доступ к камере...";
-    rollCodeReader = new ZXingBrowser.BrowserQRCodeReader();
-    const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
-
-    let selectedDeviceId = undefined;
-    if (devices && devices.length > 0) {
-      const backCamera = devices.find(d => /back|rear|environment|зад/i.test(d.label));
-      selectedDeviceId = backCamera ? backCamera.deviceId : devices[0].deviceId;
-    }
-
-    rollControls = await rollCodeReader.decodeFromVideoDevice(
-      selectedDeviceId,
-      rollScanVideo,
-      (result) => {
-        if (!result) return;
-        const text = result.getText();
-        const now = Date.now();
-        if (text === lastScanValue && now - lastScanTime < 1500) return;
-        lastScanValue = text;
-        lastScanTime = now;
-
-        const rollId = extractRollId(text);
-        if (!rollId) {
-          rollScanStatus.textContent = "QR распознан, но это не ссылка/ID рулона.";
-          return;
-        }
-
-        if (selectRollCheckboxById(rollId)) {
-          scannedSet.add(rollId);
-          refreshPickedText();
-          rollScanStatus.textContent = `Добавлен рулон ${rollId}. Сканируй следующий.`;
-        } else {
-          rollScanStatus.textContent = `Рулон ${rollId} не найден в свободных или уже в поддоне.`;
-        }
-      }
-    );
-
-    rollScanVideo.style.display = "block";
-    rollScanStartBtn.style.display = "none";
-    rollScanStopBtn.style.display = "inline-block";
-    rollScanStatus.textContent = "Камера запущена. Сканируй QR рулонов подряд.";
-  } catch (err) {
-    rollScanStatus.textContent = "Не удалось запустить камеру: " + err;
-    scanHttpsWarning.style.display = "block";
-  }
-}
-
-function stopRollScanner() {
-  try {
-    if (rollControls) rollControls.stop();
-  } catch (e) {}
-
-  rollControls = null;
-  rollScanVideo.srcObject = null;
-  rollScanVideo.style.display = "none";
-  rollScanStartBtn.style.display = "inline-block";
-  rollScanStopBtn.style.display = "none";
-  rollScanStatus.textContent = "Сканирование остановлено. Можно собрать поддон.";
-}
-
-rollScanStartBtn.addEventListener("click", startRollScanner);
-rollScanStopBtn.addEventListener("click", stopRollScanner);
-document.getElementById("roll-scan-clear").addEventListener("click", () => {
-  document.querySelectorAll('input[name="roll_ids"]').forEach((cb) => {
-    cb.checked = false;
-  });
-  scannedSet.clear();
-  refreshPickedText();
-  rollScanStatus.textContent = "Выбор очищен.";
-});
-</script>
 {% endblock %}
