@@ -8,6 +8,7 @@
         <a class="btn ok" href="{{ url_for('create_pallet') }}">Создать этикетку передачи</a>
         {% if is_shop10_user(current_user) %}
             <a class="btn secondary" href="{{ url_for('experimental_roll_labels') }}">Этикетки рулонов (эксперимент)</a>
+            <a class="btn secondary" href="{{ url_for('shop10_staff_page') }}">Персонал цеха 10</a>
         {% endif %}
     {% endif %}
 
