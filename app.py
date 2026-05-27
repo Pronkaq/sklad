@@ -403,6 +403,14 @@ def can_delete_pallet(user: sqlite3.Row | None, pallet: sqlite3.Row) -> bool:
     return False
 
 
+def can_edit_shop10_pallet_label(user: sqlite3.Row | None, pallet: sqlite3.Row | None) -> bool:
+    if not user or not pallet:
+        return False
+    if not is_shop10_user(user):
+        return False
+    return pallet["source_shop"] == user["shop"] and pallet["status"] == "CREATED"
+
+
 
 
 
@@ -555,6 +563,7 @@ def inject_helpers() -> dict[str, Any]:
         "is_shop10_user": is_shop10_user,
         "can_manage_roll_label": can_manage_roll_label,
         "can_delete_pallet": can_delete_pallet,
+        "can_edit_shop10_pallet_label": can_edit_shop10_pallet_label,
         "csrf_token": generate_csrf_token,
     }
 
@@ -677,6 +686,50 @@ def create_pallet():
         return redirect(url_for("pallet_detail", pallet_id=pallet_id))
 
     return render_template("create_pallet.html", user=current_user())
+
+
+@app.route("/exp/shop10/pallet-labels/<pallet_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_shop10_pallet_label(pallet_id: str):
+    user = current_user()
+    conn = get_db()
+    pallet = conn.execute("SELECT * FROM pallets WHERE id = ?", (pallet_id,)).fetchone()
+    if not can_edit_shop10_pallet_label(user, pallet):
+        conn.close()
+        return render_template("access_denied.html", message="Редактирование доступно только для этикеток цеха 10 в статусе CREATED."), 403
+
+    if request.method == "POST":
+        assortment = request.form["assortment"].strip()
+        party_number = request.form.get("party_number", "").strip()
+        item_category = request.form.get("item_category", "fabric").strip()
+        rolls_count = int(request.form["rolls_count"])
+        meters_total = float(request.form["meters_total"])
+        production_date = request.form.get("production_date") or ""
+        responsible = request.form.get("responsible", "").strip() or (user["display_name"] if user else "")
+        comment = request.form.get("comment", "").strip()
+
+        conn.execute(
+            """
+            UPDATE pallets
+            SET assortment = ?,
+                party_number = ?,
+                item_category = ?,
+                rolls_count = ?,
+                meters_total = ?,
+                production_date = ?,
+                responsible = ?,
+                comment = ?,
+                updated_at = ?
+            WHERE id = ?
+            """,
+            (assortment, party_number, item_category, rolls_count, meters_total, production_date, responsible, comment, now_str(), pallet_id),
+        )
+        conn.commit()
+        conn.close()
+        return redirect(url_for("pallet_detail", pallet_id=pallet_id))
+
+    conn.close()
+    return render_template("create_pallet.html", user=user, edit_pallet=pallet)
 
 
 @app.route("/pallet/manual", methods=["GET", "POST"])
