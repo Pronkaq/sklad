@@ -1630,18 +1630,6 @@ def experimental_roll_labels():
                     request.form.get("comment", "").strip(),
                     roll_id,
                 ))
-        elif action in ("add_staff", "delete_staff"):
-            role = request.form.get("role", "").strip()
-            full_name = request.form.get("full_name", "").strip()
-            if role in ("weaver", "assistant") and full_name:
-                if action == "add_staff":
-                    conn.execute(
-                        "INSERT OR IGNORE INTO shop10_staff(role, full_name, active, created_at) VALUES (?, ?, 1, ?)",
-                        (role, full_name, now_str()),
-                    )
-                else:
-                    conn.execute("DELETE FROM shop10_staff WHERE role = ? AND full_name = ?", (role, full_name))
-
         conn.commit()
         conn.close()
         return redirect(url_for("experimental_roll_labels"))
@@ -1671,6 +1659,37 @@ def experimental_roll_labels():
         weavers=weavers,
         assistants=assistants,
     )
+
+
+@app.route("/exp/shop10/staff", methods=["GET", "POST"])
+@login_required
+def shop10_staff_page():
+    user = current_user()
+    if not is_shop10_user(user):
+        return render_template("access_denied.html", message="Вкладка персонала доступна только цеху 10."), 403
+
+    conn = get_db()
+    if request.method == "POST":
+        action = request.form.get("action", "").strip()
+        role = request.form.get("role", "").strip()
+        full_name = request.form.get("full_name", "").strip()
+        if role in ("weaver", "assistant") and full_name:
+            if action == "add_staff":
+                conn.execute(
+                    "INSERT OR IGNORE INTO shop10_staff(role, full_name, active, created_at) VALUES (?, ?, 1, ?)",
+                    (role, full_name, now_str()),
+                )
+            elif action == "delete_staff":
+                conn.execute("DELETE FROM shop10_staff WHERE role = ? AND full_name = ?", (role, full_name))
+        conn.commit()
+        conn.close()
+        return redirect(url_for("shop10_staff_page"))
+
+    staff = conn.execute(
+        "SELECT role, full_name FROM shop10_staff WHERE active = 1 ORDER BY role, full_name"
+    ).fetchall()
+    conn.close()
+    return render_template("shop10_staff.html", staff=staff)
 
 
 @app.route("/roll-label/<roll_id>/qr.svg")

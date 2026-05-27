@@ -3,6 +3,7 @@
 <div class="card">
   <h2>Эксперимент: этикетки рулонов (цех 10)</h2>
   <p class="muted">Доступ только по прямой ссылке. Формат печати: A5, печатается полная этикетка (вся информация + QR снизу).</p>
+  <p><a class="btn secondary" href="{{ url_for('shop10_staff_page') }}">Перейти во вкладку персонала</a></p>
   <form method="post" class="grid">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="action" value="create_roll">
