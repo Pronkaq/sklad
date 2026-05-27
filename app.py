@@ -241,6 +241,15 @@ def init_db() -> None:
     """)
 
     cur.execute("""
+        CREATE TABLE IF NOT EXISTS counters_scoped (
+            counter_key TEXT NOT NULL,
+            year INTEGER NOT NULL,
+            value INTEGER NOT NULL,
+            PRIMARY KEY (counter_key, year)
+        )
+    """)
+
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS roll_labels (
             id TEXT PRIMARY KEY,
             source_shop TEXT NOT NULL,
@@ -273,21 +282,59 @@ def init_db() -> None:
     conn.close()
 
 
-def next_pallet_id(prefix: str = "P") -> str:
+def _get_max_existing_counter(conn: sqlite3.Connection, prefix: str, year: int) -> int:
+    pattern = f"{prefix}-{year}-%"
+    if prefix == "RL":
+        row = conn.execute(
+            """
+            SELECT MAX(CAST(substr(id, -6) AS INTEGER)) AS max_value
+            FROM roll_labels
+            WHERE id LIKE ?
+            """,
+            (pattern,),
+        ).fetchone()
+    else:
+        row = conn.execute(
+            """
+            SELECT MAX(CAST(substr(id, -6) AS INTEGER)) AS max_value
+            FROM pallets
+            WHERE id LIKE ?
+            """,
+            (pattern,),
+        ).fetchone()
+    return int(row["max_value"] or 0)
+
+
+def _next_scoped_id(conn: sqlite3.Connection, prefix: str = "P") -> str:
     year = datetime.now().year
-    conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT value FROM counters WHERE year = ?", (year,))
+    counter_key = prefix.strip().upper() or "P"
+    cur.execute(
+        "SELECT value FROM counters_scoped WHERE counter_key = ? AND year = ?",
+        (counter_key, year),
+    )
     row = cur.fetchone()
     if row is None:
-        value = 1
-        cur.execute("INSERT INTO counters(year, value) VALUES(?, ?)", (year, value))
+        value = _get_max_existing_counter(conn, counter_key, year) + 1
+        cur.execute(
+            "INSERT INTO counters_scoped(counter_key, year, value) VALUES(?, ?, ?)",
+            (counter_key, year, value),
+        )
     else:
         value = row["value"] + 1
-        cur.execute("UPDATE counters SET value = ? WHERE year = ?", (value, year))
+        cur.execute(
+            "UPDATE counters_scoped SET value = ? WHERE counter_key = ? AND year = ?",
+            (value, counter_key, year),
+        )
+    return f"{counter_key}-{year}-{value:06d}"
+
+
+def next_pallet_id(prefix: str = "P") -> str:
+    conn = get_db()
+    value = _next_scoped_id(conn, prefix)
     conn.commit()
     conn.close()
-    return f"{prefix}-{year}-{value:06d}"
+    return value
 
 
 def add_movement(
@@ -334,17 +381,7 @@ def get_assortments(category: str | None = None) -> list[sqlite3.Row]:
 
 
 def next_pallet_id_tx(conn: sqlite3.Connection, prefix: str = "P") -> str:
-    year = datetime.now().year
-    cur = conn.cursor()
-    cur.execute("SELECT value FROM counters WHERE year = ?", (year,))
-    row = cur.fetchone()
-    if row is None:
-        value = 1
-        cur.execute("INSERT INTO counters(year, value) VALUES(?, ?)", (year, value))
-    else:
-        value = row["value"] + 1
-        cur.execute("UPDATE counters SET value = ? WHERE year = ?", (value, year))
-    return f"{prefix}-{year}-{value:06d}"
+    return _next_scoped_id(conn, prefix)
 
 def get_pallet_or_404(pallet_id: str) -> sqlite3.Row:
     conn = get_db()
