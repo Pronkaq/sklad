@@ -6,6 +6,9 @@
     {% if current_user and is_source_user(current_user) %}
         <p class="muted">Ваш цех создаёт этикетки передачи в цех 5 и видит только свои передачи.</p>
         <a class="btn ok" href="{{ url_for('create_pallet') }}">Создать этикетку передачи</a>
+        {% if is_shop10_user(current_user) %}
+            <a class="btn secondary" href="{{ url_for('experimental_roll_labels') }}">Этикетки рулонов (эксперимент)</a>
+        {% endif %}
     {% endif %}
 
     {% if current_user and is_shop5_user(current_user) %}
