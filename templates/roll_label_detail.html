@@ -3,41 +3,49 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Рулон {{ roll.id }}</title>
+  <title>Этикетка рулона {{ roll.id }}</title>
   <style>
     @page { size: A5 portrait; margin: 8mm; }
-    body { font-family: Arial, sans-serif; margin: 0; padding: 12px; background: #f5f5f5; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 12px; background: #f5f5f5; color:#1f2937; }
     .card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 12px; }
-    .row { margin: 4px 0; font-size: 14px; }
     .actions { margin-bottom: 8px; display:flex; gap:8px; }
-    .btn { display:inline-block; padding:8px 10px; background:#2563eb; color:#fff; text-decoration:none; border-radius:8px; }
-    
+    .btn { display:inline-block; padding:8px 10px; background:#2563eb; color:#fff; text-decoration:none; border-radius:8px; border:none; }
+    .grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px; }
+    .field label { display:block; font-weight:600; margin-bottom:4px; color:#6b7280; }
+    .field input { width:100%; box-sizing:border-box; padding:10px; border:1px solid #d1d5db; border-radius:8px; background:#f9fafb; }
+    .full { grid-column:1/-1; }
+    .qr-wrap { margin-top:14px; text-align:center; }
+    .meta { color:#6b7280; font-size:13px; margin-bottom:8px; }
     @media print {
       .actions { display:none; }
       body { background:#fff; padding:0; }
       .card { border:none; border-radius:0; padding:0; }
-      .row { font-size:13px; }
     }
   </style>
 </head>
 <body>
   <div class="actions">
-    <button class="btn" onclick="window.print()">Печать A5 (полная этикетка)</button>
+    <button class="btn" onclick="window.print()">Печать A5</button>
     <a class="btn" href="/">Главная</a>
   </div>
   <div class="card">
-    <div class="row"><b>ID:</b> {{ roll.id }}</div>
-    <div class="row"><b>Ассортимент:</b> {{ roll.assortment }}</div>
-    <div class="row"><b>Номер рулона:</b> {{ roll.roll_number }}</div>
-    <div class="row"><b>Номер партии:</b> {{ roll.party_number or '—' }}</div>
-    <div class="row"><b>Номер основы:</b> {{ roll.base_number or '—' }}</div>
-    <div class="row"><b>Замасливатель:</b> {{ roll.lubricant or '13' }}</div>
-    <div class="row"><b>Ширина:</b> {{ roll.width or '—' }}</div>
-    <div class="row"><b>Кол-во метров:</b> {{ roll.meters }}</div>
-    <div class="row"><b>ФИО ткача:</b> {{ roll.weaver_name or '—' }}</div>
-    <div class="row"><b>ФИО пом. мастера:</b> {{ roll.assistant_name or '—' }}</div>
-    <div class="row"><b>Дата изготовления:</b> {{ roll.production_date or '—' }}</div>
-    <div class="row" style="margin-top:10px;text-align:center;"><img src="{{ url_for('roll_qr_svg', roll_id=roll.id) }}" alt="QR" style="width:45mm;height:45mm;"></div>
+    <div class="meta">Этикетка рулона {{ roll.id }} (A5)</div>
+    <div class="grid">
+      <div class="field"><label>Ассортимент</label><input value="{{ roll.assortment }}" readonly></div>
+      <div class="field"><label>Номер рулона</label><input value="{{ roll.roll_number }}" readonly></div>
+      <div class="field"><label>Номер партии</label><input value="{{ roll.party_number or '—' }}" readonly></div>
+      <div class="field"><label>Номер основы</label><input value="{{ roll.base_number or '—' }}" readonly></div>
+      <div class="field"><label>Замасливатель</label><input value="{{ roll.lubricant or '13' }}" readonly></div>
+      <div class="field"><label>Ширина</label><input value="{{ roll.width or '—' }}" readonly></div>
+      <div class="field"><label>Кол-во метров</label><input value="{{ roll.meters }}" readonly></div>
+      <div class="field"><label>ФИО ткача</label><input value="{{ roll.weaver_name or '—' }}" readonly></div>
+      <div class="field"><label>ФИО пом.мастера</label><input value="{{ roll.assistant_name or '—' }}" readonly></div>
+      <div class="field"><label>Дата изготовления</label><input value="{{ roll.production_date or '—' }}" readonly></div>
+      <div class="field full"><label>Комментарий</label><input value="{{ roll.comment or '—' }}" readonly></div>
+    </div>
+    <div class="qr-wrap">
+      <img src="{{ url_for('roll_qr_svg', roll_id=roll.id) }}" alt="QR" style="width:45mm;height:45mm;">
+    </div>
   </div>
 </body>
 </html>

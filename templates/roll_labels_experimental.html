@@ -60,7 +60,7 @@
         <tr>
           <td>{% if not r.pallet_id %}<input type="checkbox" name="roll_ids" value="{{ r.id }}" form="build-pallet-form">{% endif %}</td>
           <td>{{ r.id }}</td><td>{{ r.roll_number }}</td><td>{{ r.assortment }}</td><td>{{ r.party_number or '—' }}</td><td>{{ r.meters }}</td>
-          <td><a class="btn secondary" href="{{ url_for('roll_qr_svg', roll_id=r.id) }}" target="_blank" title="Ассортимент: {{ r.assortment }} | Рулон: {{ r.roll_number }} | Партия: {{ r.party_number or '—' }} | Основа: {{ r.base_number or '—' }} | Замасливатель: {{ r.lubricant or '13' }} | Ширина: {{ r.width or '—' }} | Метры: {{ r.meters }} | Ткач: {{ r.weaver_name or '—' }} | Пом. мастера: {{ r.assistant_name or '—' }} | Дата: {{ r.production_date or '—' }}">QR</a></td>
+          <td><a class="btn secondary" href="{{ url_for('roll_label_detail', roll_id=r.id) }}" target="_blank" title="Ассортимент: {{ r.assortment }} | Рулон: {{ r.roll_number }} | Партия: {{ r.party_number or '—' }} | Основа: {{ r.base_number or '—' }} | Замасливатель: {{ r.lubricant or '13' }} | Ширина: {{ r.width or '—' }} | Метры: {{ r.meters }} | Ткач: {{ r.weaver_name or '—' }} | Пом. мастера: {{ r.assistant_name or '—' }} | Дата: {{ r.production_date or '—' }}">Открыть этикетку</a></td>
           <td>
             {% if can_manage_roll_label(current_user, r) %}
               <a class="btn secondary" href="{{ url_for('experimental_roll_labels', edit=r.id) }}">Редактировать</a>
