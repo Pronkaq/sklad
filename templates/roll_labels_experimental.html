@@ -3,7 +3,6 @@
 <div class="card">
   <h2>Эксперимент: этикетки рулонов (цех 10)</h2>
   <p class="muted">Доступ только по прямой ссылке. Формат печати: A5, печатается полная этикетка (вся информация + QR снизу).</p>
-  <p><a class="btn secondary" href="{{ url_for('shop10_staff_page') }}">Перейти во вкладку персонала</a></p>
   <form method="post" class="grid">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="action" value="create_roll">
@@ -26,15 +25,6 @@
     <div><label>Дата изготовления</label><input name="production_date" type="date"></div>
     <div style="grid-column:1/-1"><label>Комментарий</label><input name="comment"></div>
     <div style="grid-column:1/-1"><button type="submit">Создать этикетку рулона</button></div>
-  </form>
-  <hr>
-  <h3>Справочник персонала</h3>
-  <form method="post" class="grid">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" name="action" value="add_staff">
-    <div><label>Роль</label><select name="role" required><option value="weaver">Ткач</option><option value="assistant">Пом. мастера</option></select></div>
-    <div><label>ФИО</label><input name="full_name" required></div>
-    <div><button type="submit">Добавить в список</button></div>
   </form>
 </div>
 
