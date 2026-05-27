@@ -167,7 +167,7 @@
     </section>
 
     <section class="section responsible">
-      <div class="line"><span class="k">Ткач:</span> <span class="v">{{ roll.weaver_name or '—' }}</span></div>
+      <div class="line"><span class="k">Ткачи:</span> <span class="v">{{ roll.weaver_name or '—' }}{% if roll.weaver_name_2 %}, {{ roll.weaver_name_2 }}{% endif %}</span></div>
       <div class="line"><span class="k">Пом. мастера:</span> <span class="v">{{ roll.assistant_name or '—' }}</span></div>
       <div class="line"><span class="k">Дата изготовления:</span> <span class="v">{{ roll.production_date or '—' }}</span></div>
       <div class="line"><span class="k">Комментарий:</span> <span class="v">{{ roll.comment or '—' }}</span></div>
