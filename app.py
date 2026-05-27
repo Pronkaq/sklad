@@ -408,7 +408,7 @@ def can_edit_shop10_pallet_label(user: sqlite3.Row | None, pallet: sqlite3.Row |
         return False
     if not is_shop10_user(user):
         return False
-    return pallet["source_shop"] == user["shop"] and pallet["status"] == "CREATED"
+    return pallet["source_shop"] == user["shop"] and pallet["status"] not in ("CLOSED", "SOLD")
 
 
 
@@ -696,7 +696,7 @@ def edit_shop10_pallet_label(pallet_id: str):
     pallet = conn.execute("SELECT * FROM pallets WHERE id = ?", (pallet_id,)).fetchone()
     if not can_edit_shop10_pallet_label(user, pallet):
         conn.close()
-        return render_template("access_denied.html", message="Редактирование доступно только для этикеток цеха 10 в статусе CREATED."), 403
+        return render_template("access_denied.html", message="Редактирование доступно только для активных этикеток цеха 10 (кроме CLOSED/SOLD)."), 403
 
     if request.method == "POST":
         assortment = request.form["assortment"].strip()
