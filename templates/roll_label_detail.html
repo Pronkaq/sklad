@@ -6,20 +6,31 @@
   <title>Этикетка рулона {{ roll.id }}</title>
   <style>
     @page { size: A5 portrait; margin: 8mm; }
-    body { font-family: Arial, sans-serif; margin: 0; padding: 12px; background: #f5f5f5; color:#1f2937; }
-    .card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 12px; }
-    .actions { margin-bottom: 8px; display:flex; gap:8px; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 12px; background: #f3f4f6; color:#111827; }
+    .actions { margin-bottom: 10px; display:flex; gap:8px; }
     .btn { display:inline-block; padding:8px 10px; background:#2563eb; color:#fff; text-decoration:none; border-radius:8px; border:none; }
-    .grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px; }
-    .field label { display:block; font-weight:600; margin-bottom:4px; color:#6b7280; }
-    .field input { width:100%; box-sizing:border-box; padding:10px; border:1px solid #d1d5db; border-radius:8px; background:#f9fafb; }
-    .full { grid-column:1/-1; }
-    .qr-wrap { margin-top:14px; text-align:center; }
-    .meta { color:#6b7280; font-size:13px; margin-bottom:8px; }
+
+    .label {
+      background:#fff; border:1px solid #d1d5db; border-radius:12px; padding:16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    }
+    .title { font-size:22px; font-weight:700; margin:0 0 6px; }
+    .subtitle { color:#6b7280; margin:0 0 14px; font-size:13px; }
+
+    .grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px 14px; }
+    .row { border:1px solid #e5e7eb; border-radius:10px; padding:8px 10px; background:#fafafa; }
+    .row.wide { grid-column: 1 / -1; }
+    .k { color:#6b7280; font-size:12px; margin-bottom:3px; }
+    .v { font-size:16px; font-weight:600; word-break:break-word; }
+
+    .std { margin-top:14px; text-align:center; font-weight:700; letter-spacing:.4px; }
+    .qr-wrap { margin-top:10px; text-align:center; }
+    .qr-wrap img { width:48mm; height:48mm; }
+
     @media print {
       .actions { display:none; }
       body { background:#fff; padding:0; }
-      .card { border:none; border-radius:0; padding:0; }
+      .label { border:none; border-radius:0; box-shadow:none; padding:0; }
     }
   </style>
 </head>
@@ -28,23 +39,28 @@
     <button class="btn" onclick="window.print()">Печать A5</button>
     <a class="btn" href="/">Главная</a>
   </div>
-  <div class="card">
-    <div class="meta">Этикетка рулона {{ roll.id }} (A5)</div>
+
+  <div class="label">
+    <h1 class="title">Этикетка рулона</h1>
+    <p class="subtitle">ID: {{ roll.id }}</p>
+
     <div class="grid">
-      <div class="field"><label>Ассортимент</label><input value="{{ roll.assortment }}" readonly></div>
-      <div class="field"><label>Номер рулона</label><input value="{{ roll.roll_number }}" readonly></div>
-      <div class="field"><label>Номер партии</label><input value="{{ roll.party_number or '—' }}" readonly></div>
-      <div class="field"><label>Номер основы</label><input value="{{ roll.base_number or '—' }}" readonly></div>
-      <div class="field"><label>Замасливатель</label><input value="{{ roll.lubricant or '13' }}" readonly></div>
-      <div class="field"><label>Ширина</label><input value="{{ roll.width or '—' }}" readonly></div>
-      <div class="field"><label>Кол-во метров</label><input value="{{ roll.meters }}" readonly></div>
-      <div class="field"><label>ФИО ткача</label><input value="{{ roll.weaver_name or '—' }}" readonly></div>
-      <div class="field"><label>ФИО пом.мастера</label><input value="{{ roll.assistant_name or '—' }}" readonly></div>
-      <div class="field"><label>Дата изготовления</label><input value="{{ roll.production_date or '—' }}" readonly></div>
-      <div class="field full"><label>Комментарий</label><input value="{{ roll.comment or '—' }}" readonly></div>
+      <div class="row"><div class="k">Ассортимент</div><div class="v">{{ roll.assortment }}</div></div>
+      <div class="row"><div class="k">Номер рулона</div><div class="v">{{ roll.roll_number }}</div></div>
+      <div class="row"><div class="k">Номер партии</div><div class="v">{{ roll.party_number or '—' }}</div></div>
+      <div class="row"><div class="k">Номер основы</div><div class="v">{{ roll.base_number or '—' }}</div></div>
+      <div class="row"><div class="k">Замасливатель</div><div class="v">{{ roll.lubricant or '13' }}</div></div>
+      <div class="row"><div class="k">Ширина</div><div class="v">{{ roll.width or '—' }}</div></div>
+      <div class="row"><div class="k">Кол-во метров</div><div class="v">{{ roll.meters }}</div></div>
+      <div class="row"><div class="k">ФИО ткача</div><div class="v">{{ roll.weaver_name or '—' }}</div></div>
+      <div class="row"><div class="k">ФИО пом.мастера</div><div class="v">{{ roll.assistant_name or '—' }}</div></div>
+      <div class="row"><div class="k">Дата изготовления</div><div class="v">{{ roll.production_date or '—' }}</div></div>
+      <div class="row wide"><div class="k">Комментарий</div><div class="v">{{ roll.comment or '—' }}</div></div>
     </div>
+
+    <div class="std">СТО 18774477-2026</div>
     <div class="qr-wrap">
-      <img src="{{ url_for('roll_qr_svg', roll_id=roll.id) }}" alt="QR" style="width:45mm;height:45mm;">
+      <img src="{{ url_for('roll_qr_svg', roll_id=roll.id) }}" alt="QR">
     </div>
   </div>
 </body>
