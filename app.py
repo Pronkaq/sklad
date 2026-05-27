@@ -241,6 +241,15 @@ def init_db() -> None:
     """)
 
     cur.execute("""
+        CREATE TABLE IF NOT EXISTS counters_scoped (
+            counter_key TEXT NOT NULL,
+            year INTEGER NOT NULL,
+            value INTEGER NOT NULL,
+            PRIMARY KEY (counter_key, year)
+        )
+    """)
+
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS roll_labels (
             id TEXT PRIMARY KEY,
             source_shop TEXT NOT NULL,
@@ -273,21 +282,59 @@ def init_db() -> None:
     conn.close()
 
 
-def next_pallet_id(prefix: str = "P") -> str:
+def _get_max_existing_counter(conn: sqlite3.Connection, prefix: str, year: int) -> int:
+    pattern = f"{prefix}-{year}-%"
+    if prefix == "RL":
+        row = conn.execute(
+            """
+            SELECT MAX(CAST(substr(id, -6) AS INTEGER)) AS max_value
+            FROM roll_labels
+            WHERE id LIKE ?
+            """,
+            (pattern,),
+        ).fetchone()
+    else:
+        row = conn.execute(
+            """
+            SELECT MAX(CAST(substr(id, -6) AS INTEGER)) AS max_value
+            FROM pallets
+            WHERE id LIKE ?
+            """,
+            (pattern,),
+        ).fetchone()
+    return int(row["max_value"] or 0)
+
+
+def _next_scoped_id(conn: sqlite3.Connection, prefix: str = "P") -> str:
     year = datetime.now().year
-    conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT value FROM counters WHERE year = ?", (year,))
+    counter_key = prefix.strip().upper() or "P"
+    cur.execute(
+        "SELECT value FROM counters_scoped WHERE counter_key = ? AND year = ?",
+        (counter_key, year),
+    )
     row = cur.fetchone()
     if row is None:
-        value = 1
-        cur.execute("INSERT INTO counters(year, value) VALUES(?, ?)", (year, value))
+        value = _get_max_existing_counter(conn, counter_key, year) + 1
+        cur.execute(
+            "INSERT INTO counters_scoped(counter_key, year, value) VALUES(?, ?, ?)",
+            (counter_key, year, value),
+        )
     else:
         value = row["value"] + 1
-        cur.execute("UPDATE counters SET value = ? WHERE year = ?", (value, year))
+        cur.execute(
+            "UPDATE counters_scoped SET value = ? WHERE counter_key = ? AND year = ?",
+            (value, counter_key, year),
+        )
+    return f"{counter_key}-{year}-{value:06d}"
+
+
+def next_pallet_id(prefix: str = "P") -> str:
+    conn = get_db()
+    value = _next_scoped_id(conn, prefix)
     conn.commit()
     conn.close()
-    return f"{prefix}-{year}-{value:06d}"
+    return value
 
 
 def add_movement(
@@ -334,17 +381,7 @@ def get_assortments(category: str | None = None) -> list[sqlite3.Row]:
 
 
 def next_pallet_id_tx(conn: sqlite3.Connection, prefix: str = "P") -> str:
-    year = datetime.now().year
-    cur = conn.cursor()
-    cur.execute("SELECT value FROM counters WHERE year = ?", (year,))
-    row = cur.fetchone()
-    if row is None:
-        value = 1
-        cur.execute("INSERT INTO counters(year, value) VALUES(?, ?)", (year, value))
-    else:
-        value = row["value"] + 1
-        cur.execute("UPDATE counters SET value = ? WHERE year = ?", (value, year))
-    return f"{prefix}-{year}-{value:06d}"
+    return _next_scoped_id(conn, prefix)
 
 def get_pallet_or_404(pallet_id: str) -> sqlite3.Row:
     conn = get_db()
@@ -364,6 +401,14 @@ def can_delete_pallet(user: sqlite3.Row | None, pallet: sqlite3.Row) -> bool:
     if is_source_user(user):
         return pallet["source_shop"] == user["shop"] and pallet["status"] == "CREATED"
     return False
+
+
+def can_edit_shop10_pallet_label(user: sqlite3.Row | None, pallet: sqlite3.Row | None) -> bool:
+    if not user or not pallet:
+        return False
+    if not is_shop10_user(user):
+        return False
+    return pallet["source_shop"] == user["shop"] and pallet["status"] == "CREATED"
 
 
 
@@ -518,6 +563,7 @@ def inject_helpers() -> dict[str, Any]:
         "is_shop10_user": is_shop10_user,
         "can_manage_roll_label": can_manage_roll_label,
         "can_delete_pallet": can_delete_pallet,
+        "can_edit_shop10_pallet_label": can_edit_shop10_pallet_label,
         "csrf_token": generate_csrf_token,
     }
 
@@ -640,6 +686,50 @@ def create_pallet():
         return redirect(url_for("pallet_detail", pallet_id=pallet_id))
 
     return render_template("create_pallet.html", user=current_user())
+
+
+@app.route("/exp/shop10/pallet-labels/<pallet_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_shop10_pallet_label(pallet_id: str):
+    user = current_user()
+    conn = get_db()
+    pallet = conn.execute("SELECT * FROM pallets WHERE id = ?", (pallet_id,)).fetchone()
+    if not can_edit_shop10_pallet_label(user, pallet):
+        conn.close()
+        return render_template("access_denied.html", message="Редактирование доступно только для этикеток цеха 10 в статусе CREATED."), 403
+
+    if request.method == "POST":
+        assortment = request.form["assortment"].strip()
+        party_number = request.form.get("party_number", "").strip()
+        item_category = request.form.get("item_category", "fabric").strip()
+        rolls_count = int(request.form["rolls_count"])
+        meters_total = float(request.form["meters_total"])
+        production_date = request.form.get("production_date") or ""
+        responsible = request.form.get("responsible", "").strip() or (user["display_name"] if user else "")
+        comment = request.form.get("comment", "").strip()
+
+        conn.execute(
+            """
+            UPDATE pallets
+            SET assortment = ?,
+                party_number = ?,
+                item_category = ?,
+                rolls_count = ?,
+                meters_total = ?,
+                production_date = ?,
+                responsible = ?,
+                comment = ?,
+                updated_at = ?
+            WHERE id = ?
+            """,
+            (assortment, party_number, item_category, rolls_count, meters_total, production_date, responsible, comment, now_str(), pallet_id),
+        )
+        conn.commit()
+        conn.close()
+        return redirect(url_for("pallet_detail", pallet_id=pallet_id))
+
+    conn.close()
+    return render_template("create_pallet.html", user=user, edit_pallet=pallet)
 
 
 @app.route("/pallet/manual", methods=["GET", "POST"])
