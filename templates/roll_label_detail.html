@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Рулон {{ roll.id }}</title>
+  <style>
+    @page { size: A5 portrait; margin: 8mm; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 12px; background: #f5f5f5; }
+    .card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 12px; }
+    .row { margin: 4px 0; font-size: 14px; }
+    .actions { margin-bottom: 8px; display:flex; gap:8px; }
+    .btn { display:inline-block; padding:8px 10px; background:#2563eb; color:#fff; text-decoration:none; border-radius:8px; }
+    
+    @media print {
+      .actions { display:none; }
+      body { background:#fff; padding:0; }
+      .card { border:none; border-radius:0; padding:0; }
+      .row { font-size:13px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="actions">
+    <button class="btn" onclick="window.print()">Печать A5 (полная этикетка)</button>
+    <a class="btn" href="/">Главная</a>
+  </div>
+  <div class="card">
+    <div class="row"><b>ID:</b> {{ roll.id }}</div>
+    <div class="row"><b>Ассортимент:</b> {{ roll.assortment }}</div>
+    <div class="row"><b>Номер рулона:</b> {{ roll.roll_number }}</div>
+    <div class="row"><b>Номер партии:</b> {{ roll.party_number or '—' }}</div>
+    <div class="row"><b>Номер основы:</b> {{ roll.base_number or '—' }}</div>
+    <div class="row"><b>Замасливатель:</b> {{ roll.lubricant or '13' }}</div>
+    <div class="row"><b>Ширина:</b> {{ roll.width or '—' }}</div>
+    <div class="row"><b>Кол-во метров:</b> {{ roll.meters }}</div>
+    <div class="row"><b>ФИО ткача:</b> {{ roll.weaver_name or '—' }}</div>
+    <div class="row"><b>ФИО пом. мастера:</b> {{ roll.assistant_name or '—' }}</div>
+    <div class="row"><b>Дата изготовления:</b> {{ roll.production_date or '—' }}</div>
+    <div class="row" style="margin-top:10px;text-align:center;"><img src="{{ url_for('roll_qr_svg', roll_id=roll.id) }}" alt="QR" style="width:45mm;height:45mm;"></div>
+  </div>
+</body>
+</html>
