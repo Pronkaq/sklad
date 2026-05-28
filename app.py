@@ -809,6 +809,12 @@ def manual_pallet():
 def pallet_detail(pallet_id: str):
     conn = get_db()
     pallet = conn.execute("SELECT * FROM pallets WHERE id = ?", (pallet_id,)).fetchone()
+    pallet_rolls = conn.execute("""
+        SELECT id, roll_number, assortment, party_number, meters, production_date
+        FROM roll_labels
+        WHERE pallet_id = ?
+        ORDER BY id ASC
+    """, (pallet_id,)).fetchall()
     movements = conn.execute("""
         SELECT * FROM movements
         WHERE pallet_id = ?
@@ -836,6 +842,7 @@ def pallet_detail(pallet_id: str):
     return render_template(
         "pallet_detail.html",
         pallet=pallet,
+        pallet_rolls=pallet_rolls,
         movements=movements,
         children=children,
         destinations=DESTINATIONS,
