@@ -56,6 +56,34 @@
 {% endif %}
 
 <div class="card">
+  <h3>Сканер рулонов (непрерывный)</h3>
+  <p class="muted">Сканируй QR подряд: каждый распознанный рулон сразу добавится в выбор. После обхода нажми «Собрать поддон из выбранных рулонов».</p>
+  <div id="https-warning" class="small-form" style="display:none; background:#fff7ed;">
+    <b>Камера может не запуститься по HTTP.</b><br>
+    На телефонах обычно нужен HTTPS. Если не завелось — используй ручной ввод ниже.
+  </div>
+  <div id="lib-warning" class="small-form" style="display:none; background:#fee2e2;">
+    <b>Не загрузилась библиотека сканера.</b><br>
+    Проверь интернет или используй ручной ввод ID/ссылки.
+  </div>
+  <div class="small-form">
+    <video id="preview" autoplay muted playsinline style="width:100%; max-width:560px; border-radius:14px; background:#111;"></video>
+    <p id="scan-status" class="muted">Нажми кнопку запуска камеры.</p>
+    <button id="start-btn" type="button">Запустить камеру</button>
+    <button id="stop-btn" type="button" class="secondary" style="display:none;">Остановить</button>
+  </div>
+  <form id="manual-form">
+    <div class="actions">
+      <div style="flex:1;">
+        <label>ID рулона или ссылка из QR</label>
+        <input id="manual-input" placeholder="Например: RL-2026-000001 или https://.../roll-label/RL-2026-000001">
+      </div>
+      <button type="submit">Добавить</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
   <h3>Рулоны</h3>
   <form id="build-pallet-form" method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -88,4 +116,99 @@
     </div>
     <button class="ok" type="submit" form="build-pallet-form">Собрать поддон из выбранных рулонов</button>
 </div>
+<script src="https://unpkg.com/@zxing/browser@latest"></script>
+<script>
+const video = document.getElementById("preview");
+const statusEl = document.getElementById("scan-status");
+const startBtn = document.getElementById("start-btn");
+const stopBtn = document.getElementById("stop-btn");
+const httpsWarning = document.getElementById("https-warning");
+const libWarning = document.getElementById("lib-warning");
+const manualInput = document.getElementById("manual-input");
+
+let codeReader = null;
+let controls = null;
+const selectedRollIds = new Set();
+
+if (location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+  httpsWarning.style.display = "block";
+}
+
+function normalizeRollIdFromValue(value) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  if (raw.startsWith("http://") || raw.startsWith("https://")) {
+    try {
+      const parsed = new URL(raw);
+      const match = parsed.pathname.match(/^\/roll-label\/([^\/?#]+)$/);
+      if (match && match[1]) return match[1];
+    } catch (e) {}
+  }
+  return raw;
+}
+
+function addRollToSelection(rawValue) {
+  const rollId = normalizeRollIdFromValue(rawValue);
+  if (!rollId) return;
+  const checkbox = document.querySelector(`input[name="roll_ids"][value="${CSS.escape(rollId)}"]`);
+  if (!checkbox) {
+    statusEl.textContent = `Рулон ${rollId} не найден в списке свободных рулонов.`;
+    return;
+  }
+  if (checkbox.checked || selectedRollIds.has(rollId)) {
+    statusEl.textContent = `Рулон ${rollId} уже добавлен.`;
+    return;
+  }
+  checkbox.checked = true;
+  selectedRollIds.add(rollId);
+  statusEl.textContent = `Добавлен: ${rollId}. Всего в подборе: ${selectedRollIds.size}.`;
+}
+
+async function startScanner() {
+  if (!window.ZXingBrowser) {
+    libWarning.style.display = "block";
+    statusEl.textContent = "Библиотека сканера не загрузилась.";
+    return;
+  }
+  try {
+    statusEl.textContent = "Запрашиваю доступ к камере...";
+    codeReader = new ZXingBrowser.BrowserQRCodeReader();
+    const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
+    let selectedDeviceId = undefined;
+    if (devices && devices.length > 0) {
+      const backCamera = devices.find(d => /back|rear|environment|зад/i.test(d.label));
+      selectedDeviceId = backCamera ? backCamera.deviceId : devices[0].deviceId;
+    }
+    controls = await codeReader.decodeFromVideoDevice(selectedDeviceId, video, (result) => {
+      if (result) addRollToSelection(result.getText());
+    });
+    startBtn.style.display = "none";
+    stopBtn.style.display = "inline-block";
+    statusEl.textContent = "Камера запущена. Сканируй QR рулонов подряд.";
+  } catch (err) {
+    statusEl.textContent = "Не удалось запустить камеру: " + err;
+    httpsWarning.style.display = "block";
+  }
+}
+
+function stopScanner() {
+  try {
+    if (controls) controls.stop();
+  } catch (e) {}
+  controls = null;
+  video.srcObject = null;
+  startBtn.style.display = "inline-block";
+  stopBtn.style.display = "none";
+  statusEl.textContent = "Сканирование остановлено.";
+}
+
+startBtn.addEventListener("click", startScanner);
+stopBtn.addEventListener("click", stopScanner);
+document.getElementById("manual-form").addEventListener("submit", function(e) {
+  e.preventDefault();
+  addRollToSelection(manualInput.value);
+  manualInput.value = "";
+});
+</script>
 {% endblock %}
