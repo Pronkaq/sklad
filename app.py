@@ -260,8 +260,11 @@ def init_db() -> None:
             lubricant TEXT,
             width TEXT,
             meters REAL NOT NULL,
+            meters_shift_1 REAL,
+            meters_shift_2 REAL,
             weaver_name TEXT,
             weaver_name_2 TEXT,
+            loom_number INTEGER,
             assistant_name TEXT,
             production_date TEXT,
             created_by TEXT,
@@ -272,6 +275,18 @@ def init_db() -> None:
     """)
     try:
         cur.execute("ALTER TABLE roll_labels ADD COLUMN weaver_name_2 TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cur.execute("ALTER TABLE roll_labels ADD COLUMN meters_shift_1 REAL")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cur.execute("ALTER TABLE roll_labels ADD COLUMN meters_shift_2 REAL")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cur.execute("ALTER TABLE roll_labels ADD COLUMN loom_number INTEGER")
     except sqlite3.OperationalError:
         pass
 
@@ -1536,14 +1551,20 @@ def experimental_roll_labels():
 
     if request.method == "POST":
         action = request.form.get("action", "create_roll")
+        raw_loom_number = (request.form.get("loom_number") or "").strip()
+        loom_number = int(raw_loom_number) if raw_loom_number.isdigit() else None
+        if loom_number is not None and not (1 <= loom_number <= 8):
+            conn.close()
+            return render_template("access_denied.html", message="Номер станка должен быть от 1 до 8."), 400
         if action == "create_roll":
             roll_id = next_pallet_id("RL")
             conn.execute("""
                 INSERT INTO roll_labels(
                     id, source_shop, assortment, roll_number, party_number, base_number, lubricant,
-                    width, meters, weaver_name, weaver_name_2, assistant_name, production_date, created_by, created_at, comment
+                    width, meters, meters_shift_1, meters_shift_2, weaver_name, weaver_name_2, loom_number,
+                    assistant_name, production_date, created_by, created_at, comment
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 roll_id,
                 user["shop"],
@@ -1554,8 +1575,11 @@ def experimental_roll_labels():
                 request.form.get("lubricant", "13").strip() or "13",
                 request.form.get("width", "").strip(),
                 parse_float(request.form.get("meters"), 0),
+                parse_float(request.form.get("meters_shift_1"), 0),
+                parse_float(request.form.get("meters_shift_2"), 0),
                 request.form.get("weaver_name", "").strip(),
                 request.form.get("weaver_name_2", "").strip(),
+                loom_number,
                 request.form.get("assistant_name", "").strip(),
                 request.form.get("production_date") or "",
                 user["display_name"],
@@ -1620,7 +1644,8 @@ def experimental_roll_labels():
                 conn.execute("""
                     UPDATE roll_labels
                     SET assortment = ?, roll_number = ?, party_number = ?, base_number = ?, lubricant = ?,
-                        width = ?, meters = ?, weaver_name = ?, weaver_name_2 = ?, assistant_name = ?, production_date = ?, comment = ?
+                        width = ?, meters = ?, meters_shift_1 = ?, meters_shift_2 = ?, weaver_name = ?, weaver_name_2 = ?,
+                        loom_number = ?, assistant_name = ?, production_date = ?, comment = ?
                     WHERE id = ?
                 """, (
                     request.form.get("assortment", "").strip(),
@@ -1630,8 +1655,11 @@ def experimental_roll_labels():
                     request.form.get("lubricant", "13").strip() or "13",
                     request.form.get("width", "").strip(),
                     parse_float(request.form.get("meters"), 0),
+                    parse_float(request.form.get("meters_shift_1"), 0),
+                    parse_float(request.form.get("meters_shift_2"), 0),
                     request.form.get("weaver_name", "").strip(),
                     request.form.get("weaver_name_2", "").strip(),
+                    loom_number,
                     request.form.get("assistant_name", "").strip(),
                     request.form.get("production_date") or "",
                     request.form.get("comment", "").strip(),

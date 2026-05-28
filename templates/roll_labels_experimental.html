@@ -12,7 +12,10 @@
     <div><label>Номер основы</label><input name="base_number"></div>
     <div><label>Замасливатель</label><input name="lubricant" value="13"></div>
     <div><label>Ширина</label><input name="width"></div>
+    <div><label>Станок №</label><select name="loom_number"><option value="">—</option>{% for n in range(1, 9) %}<option value="{{ n }}">{{ n }}</option>{% endfor %}</select></div>
     <div><label>Кол-во метров</label><input name="meters" type="number" step="0.01" required></div>
+    <div><label>Метры (1 смена)</label><input name="meters_shift_1" type="number" step="0.01" min="0" placeholder="Например: 40"></div>
+    <div><label>Метры (2 смена)</label><input name="meters_shift_2" type="number" step="0.01" min="0" placeholder="Например: 60"></div>
     <div><label>Ткач 1</label>
       <select name="weaver_name"><option value="">—</option>{% for w in weavers %}<option value="{{ w.full_name }}">{{ w.full_name }}</option>{% endfor %}</select>
     </div>
@@ -41,7 +44,10 @@
     <div><label>Номер основы</label><input name="base_number" value="{{ edit_roll.base_number or '' }}"></div>
     <div><label>Замасливатель</label><input name="lubricant" value="{{ edit_roll.lubricant or '13' }}"></div>
     <div><label>Ширина</label><input name="width" value="{{ edit_roll.width or '' }}"></div>
+    <div><label>Станок №</label><select name="loom_number"><option value="">—</option>{% for n in range(1, 9) %}<option value="{{ n }}" {% if edit_roll.loom_number == n %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
     <div><label>Кол-во метров</label><input name="meters" type="number" step="0.01" value="{{ edit_roll.meters }}" required></div>
+    <div><label>Метры (1 смена)</label><input name="meters_shift_1" type="number" step="0.01" min="0" value="{{ edit_roll.meters_shift_1 if edit_roll.meters_shift_1 is not none else '' }}"></div>
+    <div><label>Метры (2 смена)</label><input name="meters_shift_2" type="number" step="0.01" min="0" value="{{ edit_roll.meters_shift_2 if edit_roll.meters_shift_2 is not none else '' }}"></div>
     <div><label>Ткач 1</label><select name="weaver_name"><option value="">—</option>{% for w in weavers %}<option value="{{ w.full_name }}" {% if (edit_roll.weaver_name or '') == w.full_name %}selected{% endif %}>{{ w.full_name }}</option>{% endfor %}</select></div>
     <div><label>Ткач 2</label><select name="weaver_name_2"><option value="">—</option>{% for w in weavers %}<option value="{{ w.full_name }}" {% if (edit_roll.weaver_name_2 or '') == w.full_name %}selected{% endif %}>{{ w.full_name }}</option>{% endfor %}</select></div>
     <div><label>ФИО пом.мастера</label><select name="assistant_name"><option value="">—</option>{% for a in assistants %}<option value="{{ a.full_name }}" {% if (edit_roll.assistant_name or '') == a.full_name %}selected{% endif %}>{{ a.full_name }}</option>{% endfor %}</select></div>
@@ -96,7 +102,7 @@
         <tr>
           <td>{% if not r.pallet_id %}<input type="checkbox" name="roll_ids" value="{{ r.id }}" form="build-pallet-form">{% endif %}</td>
           <td>{{ r.id }}</td><td>{{ r.roll_number }}</td><td>{{ r.assortment }}</td><td>{{ r.party_number or '—' }}</td><td>{{ r.meters }}</td>
-          <td><a class="btn secondary" href="{{ url_for('roll_label_detail', roll_id=r.id) }}" target="_blank" title="Ассортимент: {{ r.assortment }} | Рулон: {{ r.roll_number }} | Партия: {{ r.party_number or '—' }} | Основа: {{ r.base_number or '—' }} | Замасливатель: {{ r.lubricant or '13' }} | Ширина: {{ r.width or '—' }} | Метры: {{ r.meters }} | Ткачи: {{ r.weaver_name or '—' }}{% if r.weaver_name_2 %}, {{ r.weaver_name_2 }}{% endif %} | Пом. мастера: {{ r.assistant_name or '—' }} | Дата: {{ r.production_date or '—' }}">Открыть этикетку</a></td>
+          <td><a class="btn secondary" href="{{ url_for('roll_label_detail', roll_id=r.id) }}" target="_blank" title="Ассортимент: {{ r.assortment }} | Рулон: {{ r.roll_number }} | Партия: {{ r.party_number or '—' }} | Основа: {{ r.base_number or '—' }} | Станок: {{ r.loom_number or '—' }} | Замасливатель: {{ r.lubricant or '13' }} | Ширина: {{ r.width or '—' }} | Метры: {{ r.meters }} | 1 смена: {{ r.meters_shift_1 if r.meters_shift_1 is not none else '—' }} | 2 смена: {{ r.meters_shift_2 if r.meters_shift_2 is not none else '—' }} | Ткачи: {{ r.weaver_name or '—' }}{% if r.weaver_name_2 %}, {{ r.weaver_name_2 }}{% endif %} | Пом. мастера: {{ r.assistant_name or '—' }} | Дата: {{ r.production_date or '—' }}">Открыть этикетку</a></td>
           <td>
             {% if can_manage_roll_label(current_user, r) %}
               <a class="btn secondary" href="{{ url_for('experimental_roll_labels', edit=r.id) }}">Редактировать</a>
