@@ -163,6 +163,10 @@
           <td><span class="k">Ширина:</span> <span class="v">{{ roll.width or '—' }}</span></td>
           <td><span class="k">Замасливатель:</span> <span class="v">{{ roll.lubricant or '13' }}</span></td>
         </tr>
+        <tr>
+          <td><span class="k">Станок №:</span> <span class="v">{{ roll.loom_number or '—' }}</span></td>
+          <td><span class="k">Метры по сменам:</span> <span class="v">1-я: {{ roll.meters_shift_1 if roll.meters_shift_1 is not none else '—' }} м; 2-я: {{ roll.meters_shift_2 if roll.meters_shift_2 is not none else '—' }} м</span></td>
+        </tr>
       </table>
     </section>
 
