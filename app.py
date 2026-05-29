@@ -32,6 +32,7 @@ STATUSES = {
     "TO": "ТО",
     "WAREHOUSE": "Цеховой склад 5",
     "FG_WAREHOUSE": "Склад готовой продукции",
+    "SHOP8_WAREHOUSE": "Цех 8",
     "LAB7": "7 лаборатория",
     "REJECT": "Брак",
     "CONDITIONALLY_OK": "Условно годен",
@@ -46,6 +47,7 @@ LOCATIONS = {
     "NOVGOROD": "Новгород",
     "SHOP5_WAREHOUSE": "Цеховой склад 5",
     "FG_WAREHOUSE": "Склад готовой продукции",
+    "SHOP8_WAREHOUSE": "Цех 8",
     "KTU1": "КТУ-1",
     "KTU2": "КТУ-2",
     "LKTM": "ЛКТМ",
@@ -61,6 +63,7 @@ DESTINATIONS = [
     ("TO", "ТО"),
     ("WAREHOUSE", "Цеховой склад 5"),
     ("FG_WAREHOUSE", "Склад готовой продукции"),
+    ("SHOP8_WAREHOUSE", "Цех 8"),
     ("LAB7", "7 лаборатория"),
     ("REJECT", "Брак"),
     ("CONDITIONALLY_OK", "Условно годен"),
@@ -1302,7 +1305,7 @@ def reports_page():
                SUM(meters_total) AS meters_sum
         FROM pallets
         WHERE parent_id IS NOT NULL
-          AND status IN ('TO', 'WAREHOUSE', 'FG_WAREHOUSE', 'LAB7', 'REJECT', 'CONDITIONALLY_OK')
+          AND status IN ('TO', 'WAREHOUSE', 'FG_WAREHOUSE', 'SHOP8_WAREHOUSE', 'LAB7', 'REJECT', 'CONDITIONALLY_OK')
           AND substr(created_at, 1, 7) = ?
         GROUP BY status, location, assortment
         ORDER BY status, location, assortment
@@ -1316,7 +1319,7 @@ def reports_page():
                SUM(meters_total) AS meters_sum
         FROM pallets
         WHERE status NOT IN ('CLOSED', 'SOLD')
-          AND location IN ('SHOP5_WAREHOUSE', 'WAREHOUSE', 'FG_WAREHOUSE')
+          AND location IN ('SHOP5_WAREHOUSE', 'WAREHOUSE', 'FG_WAREHOUSE', 'SHOP8_WAREHOUSE')
         GROUP BY location, assortment
         ORDER BY location, assortment
     """).fetchall()
@@ -1400,7 +1403,7 @@ def export_monthly_report():
                SUM(meters_total) AS meters_sum
         FROM pallets
         WHERE parent_id IS NOT NULL
-          AND status IN ('TO', 'WAREHOUSE', 'FG_WAREHOUSE', 'LAB7', 'REJECT', 'CONDITIONALLY_OK')
+          AND status IN ('TO', 'WAREHOUSE', 'FG_WAREHOUSE', 'SHOP8_WAREHOUSE', 'LAB7', 'REJECT', 'CONDITIONALLY_OK')
           AND substr(created_at, 1, 7) = ?
         GROUP BY status, location, assortment
         ORDER BY status, location, assortment
