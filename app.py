@@ -445,6 +445,27 @@ def can_edit_shop10_pallet_label(user: sqlite3.Row | None, pallet: sqlite3.Row |
     return pallet["source_shop"] == user["shop"] and pallet["status"] not in ("CLOSED", "SOLD")
 
 
+def can_edit_manual_pallet_label(user: sqlite3.Row | None, pallet: sqlite3.Row | None) -> bool:
+    if not user or not pallet:
+        return False
+    if not is_shop5_user(user):
+        return False
+    return (
+        (pallet["created_reason"] or "production_transfer") == "manual_inventory"
+        and pallet["status"] not in ("CLOSED", "SOLD")
+    )
+
+
+def manual_location_status(location: str) -> str:
+    if location == "SHOP5_WAREHOUSE":
+        return "IN_SHOP5_WAREHOUSE"
+    if location == "FG_WAREHOUSE":
+        return "FG_WAREHOUSE"
+    if location == "INSPECTION":
+        return "IN_INSPECTION"
+    if location in ("KTU1", "KTU2", "LKTM"):
+        return "IN_PROCESSING"
+    return location
 
 
 
@@ -598,6 +619,7 @@ def inject_helpers() -> dict[str, Any]:
         "can_manage_roll_label": can_manage_roll_label,
         "can_delete_pallet": can_delete_pallet,
         "can_edit_shop10_pallet_label": can_edit_shop10_pallet_label,
+        "can_edit_manual_pallet_label": can_edit_manual_pallet_label,
         "csrf_token": generate_csrf_token,
     }
 
@@ -779,16 +801,7 @@ def manual_pallet():
         responsible = request.form.get("responsible", "").strip() or (current_user()["display_name"] if current_user() else "")
         comment = request.form.get("comment", "").strip()
 
-        if location == "SHOP5_WAREHOUSE":
-            status = "IN_SHOP5_WAREHOUSE"
-        elif location == "FG_WAREHOUSE":
-            status = "FG_WAREHOUSE"
-        elif location == "INSPECTION":
-            status = "IN_INSPECTION"
-        elif location in ("KTU1", "KTU2", "LKTM"):
-            status = "IN_PROCESSING"
-        else:
-            status = location
+        status = manual_location_status(location)
 
         pallet_id = next_pallet_id("INV")
         conn = get_db()
@@ -820,6 +833,67 @@ def manual_pallet():
         return redirect(url_for("pallet_detail", pallet_id=pallet_id))
 
     return render_template("manual_pallet.html", assortments=get_assortments())
+
+
+@app.route("/pallet/manual/<pallet_id>/edit", methods=["GET", "POST"])
+@shop5_required
+def edit_manual_pallet(pallet_id: str):
+    user = current_user()
+    conn = get_db()
+    pallet = conn.execute("SELECT * FROM pallets WHERE id = ?", (pallet_id,)).fetchone()
+    if not can_edit_manual_pallet_label(user, pallet):
+        conn.close()
+        return render_template(
+            "access_denied.html",
+            message="Редактирование доступно только для активных этикеток текущего остатка цеха 5.",
+        ), 403
+
+    if request.method == "POST":
+        assortment = request.form["assortment"].strip()
+        item_category = request.form.get("item_category", "fabric").strip()
+        party_number = request.form.get("party_number", "").strip()
+        rolls_count = int(request.form.get("rolls_count") or 0)
+        meters_total = parse_float(request.form.get("meters_total") or 0)
+        location = request.form.get("location", pallet["location"]).strip()
+        status = manual_location_status(location)
+        responsible = request.form.get("responsible", "").strip() or (user["display_name"] if user else "")
+        comment = request.form.get("comment", "").strip()
+
+        conn.execute(
+            """
+            UPDATE pallets
+            SET source_shop = ?,
+                assortment = ?,
+                party_number = ?,
+                item_category = ?,
+                rolls_count = ?,
+                meters_total = ?,
+                responsible = ?,
+                status = ?,
+                location = ?,
+                comment = ?,
+                updated_at = ?
+            WHERE id = ?
+            """,
+            (
+                location, assortment, party_number, item_category,
+                rolls_count, meters_total, responsible, status, location,
+                comment, now_str(), pallet_id,
+            ),
+        )
+
+        add_movement(
+            conn, pallet_id, "Редактирование этикетки текущего остатка",
+            pallet["status"], status, pallet["location"], location,
+            responsible, comment,
+        )
+
+        conn.commit()
+        conn.close()
+        return redirect(url_for("pallet_detail", pallet_id=pallet_id))
+
+    conn.close()
+    return render_template("manual_pallet.html", assortments=get_assortments(), edit_pallet=pallet)
 
 
 @app.route("/pallet/<pallet_id>")

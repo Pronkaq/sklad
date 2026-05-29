@@ -35,6 +35,9 @@
     <p>
         <a class="btn" href="{{ url_for('label', pallet_id=pallet.id) }}">Этикетка</a>
         <a class="btn secondary" href="{{ url_for('qr_svg', pallet_id=pallet.id) }}">QR-код</a>
+        {% if can_edit_manual_pallet_label(current_user, pallet) %}
+        <a class="btn secondary" href="{{ url_for('edit_manual_pallet', pallet_id=pallet.id) }}">Редактировать остаток</a>
+        {% endif %}
     </p>
 </div>
 

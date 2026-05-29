@@ -1,20 +1,20 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="card">
-    <h1>Создать этикетку текущего остатка</h1>
+    <h1>{% if edit_pallet %}Редактировать этикетку текущего остатка {{ edit_pallet.id }}{% else %}Создать этикетку текущего остатка{% endif %}</h1>
     <p class="muted">
         Для первичной инвентаризации: обойти цеховой склад, склад готовой продукции, склад цеха 8 и текущие остатки,
         завести партии в систему и распечатать новые этикетки.
     </p>
 
-    <form method="post">
+    <form method="post" {% if edit_pallet %}action="{{ url_for('edit_manual_pallet', pallet_id=edit_pallet.id) }}"{% endif %}>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="grid">
             <div>
                 <label>Тип продукции</label>
                 <select name="item_category" required>
                     {% for code, label in ITEM_CATEGORIES %}
-                        <option value="{{ code }}">{{ label }}</option>
+                        <option value="{{ code }}" {% if edit_pallet and code == edit_pallet.item_category %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -23,53 +23,54 @@
                 <label>Ассортимент</label>
                 <select name="assortment" required>
                     {% for a in assortments %}
-                        <option value="{{ a.name }}">{{ a.name }}</option>
+                        <option value="{{ a.name }}" {% if edit_pallet and a.name == edit_pallet.assortment %}selected{% endif %}>{{ a.name }}</option>
                     {% endfor %}
                 </select>
             </div>
 
             <div>
                 <label>Номер партии</label>
-                <input name="party_number" placeholder="Партия / заказ / смена">
+                <input name="party_number" placeholder="Партия / заказ / смена" value="{{ edit_pallet.party_number if edit_pallet else '' }}">
             </div>
 
             <div>
                 <label>Рулонов / мест / бухт</label>
-                <input name="rolls_count" type="number" min="0" value="1" required>
+                <input name="rolls_count" type="number" min="0" value="{{ edit_pallet.rolls_count if edit_pallet else 1 }}" required>
             </div>
 
             <div>
                 <label>Метраж</label>
-                <input name="meters_total" placeholder="Например: 1200 или 1200,5" required>
+                <input name="meters_total" placeholder="Например: 1200 или 1200,5" value="{{ edit_pallet.meters_total if edit_pallet else '' }}" required>
             </div>
 
             <div>
                 <label>Где лежит</label>
                 <select name="location" required>
-                    <option value="SHOP5_WAREHOUSE">Цеховой склад 5</option>
-                    <option value="FG_WAREHOUSE">Склад готовой продукции</option>
-                    <option value="SHOP8_WAREHOUSE">Цех 8</option>
-                    <option value="KTU1">КТУ-1</option>
-                    <option value="KTU2">КТУ-2</option>
-                    <option value="LKTM">ЛКТМ</option>
-                    <option value="INSPECTION">Разбраковка</option>
-                    <option value="TO">ТО</option>
-                    <option value="LAB7">7 лаборатория</option>
+                    <option value="SHOP5_WAREHOUSE" {% if edit_pallet and edit_pallet.location == 'SHOP5_WAREHOUSE' %}selected{% endif %}>Цеховой склад 5</option>
+                    <option value="FG_WAREHOUSE" {% if edit_pallet and edit_pallet.location == 'FG_WAREHOUSE' %}selected{% endif %}>Склад готовой продукции</option>
+                    <option value="SHOP8_WAREHOUSE" {% if edit_pallet and edit_pallet.location == 'SHOP8_WAREHOUSE' %}selected{% endif %}>Цех 8</option>
+                    <option value="KTU1" {% if edit_pallet and edit_pallet.location == 'KTU1' %}selected{% endif %}>КТУ-1</option>
+                    <option value="KTU2" {% if edit_pallet and edit_pallet.location == 'KTU2' %}selected{% endif %}>КТУ-2</option>
+                    <option value="LKTM" {% if edit_pallet and edit_pallet.location == 'LKTM' %}selected{% endif %}>ЛКТМ</option>
+                    <option value="INSPECTION" {% if edit_pallet and edit_pallet.location == 'INSPECTION' %}selected{% endif %}>Разбраковка</option>
+                    <option value="TO" {% if edit_pallet and edit_pallet.location == 'TO' %}selected{% endif %}>ТО</option>
+                    <option value="LAB7" {% if edit_pallet and edit_pallet.location == 'LAB7' %}selected{% endif %}>7 лаборатория</option>
                 </select>
             </div>
 
             <div>
                 <label>Ответственный</label>
-                <input name="responsible" value="{{ current_user.display_name if current_user else '' }}">
+                <input name="responsible" value="{{ edit_pallet.responsible if edit_pallet else (current_user.display_name if current_user else '') }}">
             </div>
         </div>
 
         <p>
             <label>Комментарий</label>
-            <textarea name="comment" placeholder="Например: заведено при первичной инвентаризации"></textarea>
+            <textarea name="comment" placeholder="Например: заведено при первичной инвентаризации">{{ edit_pallet.comment if edit_pallet else '' }}</textarea>
         </p>
 
-        <button type="submit">Создать этикетку текущего остатка</button>
+        <button type="submit">{% if edit_pallet %}Сохранить изменения{% else %}Создать этикетку текущего остатка{% endif %}</button>
+            {% if edit_pallet %}<a class="btn secondary" href="{{ url_for('pallet_detail', pallet_id=edit_pallet.id) }}">Отмена</a>{% endif %}
     </form>
 </div>
 {% endblock %}
