@@ -16,6 +16,7 @@
         <p class="muted">Цех 5 принимает, обрабатывает и разбраковывает поддоны.</p>
         <a class="btn" href="{{ url_for('manual_pallet') }}">Завести текущий остаток</a>
         <a class="btn" href="{{ url_for('scan_page') }}">Сканировать поддон</a>
+        <a class="btn ok" href="{{ url_for('stock_page') }}">Посмотреть остатки</a>
         <a class="btn" href="{{ url_for('reports_page') }}">Месячные отчёты</a>
         <a class="btn secondary" href="{{ url_for('export_stock') }}">Выгрузить остатки в Excel</a>
     {% endif %}
