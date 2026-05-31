@@ -70,6 +70,20 @@ DESTINATIONS = [
 ]
 
 
+STOCK_WAREHOUSES = [
+    ("SHOP5_WAREHOUSE", "Цеховой склад 5"),
+    ("FG_WAREHOUSE", "Склад готовой продукции"),
+    ("SHOP8_WAREHOUSE", "Цех 8"),
+]
+
+STOCK_WAREHOUSE_LOCATIONS = (
+    "SHOP5_WAREHOUSE",
+    "WAREHOUSE",
+    "FG_WAREHOUSE",
+    "SHOP8_WAREHOUSE",
+)
+
+
 ASSORTMENTS = [
     "СТ-11-13",
     "11С6-8/3-94(130)",
@@ -1332,6 +1346,109 @@ def toggle_assortment(name: str):
         conn.commit()
     conn.close()
     return redirect(url_for("assortments_page"))
+
+
+@app.route("/stock")
+@shop5_required
+def stock_page():
+    selected_warehouse = request.args.get("warehouse", "ALL").strip()
+    valid_warehouses = {code for code, _ in STOCK_WAREHOUSES}
+    if selected_warehouse not in valid_warehouses:
+        selected_warehouse = "ALL"
+
+    mode = request.args.get("mode", "current").strip()
+    if mode not in ("current", "day"):
+        mode = "current"
+
+    selected_date = request.args.get("date", datetime.now().strftime("%Y-%m-%d")).strip()
+    try:
+        parsed_date = datetime.strptime(selected_date, "%Y-%m-%d")
+    except ValueError:
+        parsed_date = datetime.now()
+        selected_date = parsed_date.strftime("%Y-%m-%d")
+
+    cutoff = None
+    if mode == "day":
+        cutoff = (parsed_date + timedelta(days=1)).strftime("%Y-%m-%d 00:00:00")
+
+    params: list[Any] = []
+    movement_condition = ""
+    pallet_condition = ""
+    if cutoff:
+        movement_condition = "WHERE timestamp < ?"
+        pallet_condition = "AND p.created_at < ?"
+        params.append(cutoff)
+
+    warehouse_placeholders = ", ".join("?" for _ in STOCK_WAREHOUSE_LOCATIONS)
+    params.extend(STOCK_WAREHOUSE_LOCATIONS)
+    if cutoff:
+        params.append(cutoff)
+
+    query = f"""
+        WITH ranked_movements AS (
+            SELECT pallet_id, to_status, to_location, timestamp,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY pallet_id
+                       ORDER BY timestamp DESC, id DESC
+                   ) AS row_number
+            FROM movements
+            {movement_condition}
+        ),
+        warehouse_stock AS (
+            SELECT p.*,
+                   COALESCE(m.to_status, p.status) AS stock_status,
+                   CASE COALESCE(m.to_location, p.location)
+                       WHEN 'WAREHOUSE' THEN 'SHOP5_WAREHOUSE'
+                       ELSE COALESCE(m.to_location, p.location)
+                   END AS stock_location
+            FROM pallets p
+            LEFT JOIN ranked_movements m
+              ON m.pallet_id = p.id AND m.row_number = 1
+            WHERE COALESCE(m.to_status, p.status) NOT IN ('CLOSED', 'SOLD')
+              AND COALESCE(m.to_location, p.location) IN ({warehouse_placeholders})
+              {pallet_condition}
+        )
+    """
+
+    conn = get_db()
+    summary = conn.execute(query + """
+        SELECT stock_location AS location,
+               COUNT(*) AS pallets_count,
+               SUM(rolls_count) AS rolls_sum,
+               SUM(meters_total) AS meters_sum
+        FROM warehouse_stock
+        GROUP BY stock_location
+        ORDER BY stock_location
+    """, params).fetchall()
+
+    detail_params = list(params)
+    detail_condition = ""
+    if selected_warehouse != "ALL":
+        detail_condition = "WHERE stock_location = ?"
+        detail_params.append(selected_warehouse)
+
+    stock = conn.execute(query + f"""
+        SELECT stock_location AS location, assortment,
+               COUNT(*) AS pallets_count,
+               SUM(rolls_count) AS rolls_sum,
+               SUM(meters_total) AS meters_sum
+        FROM warehouse_stock
+        {detail_condition}
+        GROUP BY stock_location, assortment
+        ORDER BY stock_location, assortment
+    """, detail_params).fetchall()
+    conn.close()
+
+    summary_by_warehouse = {row["location"]: row for row in summary}
+    return render_template(
+        "stock.html",
+        warehouses=STOCK_WAREHOUSES,
+        selected_warehouse=selected_warehouse,
+        mode=mode,
+        selected_date=selected_date,
+        summary_by_warehouse=summary_by_warehouse,
+        stock=stock,
+    )
 
 
 @app.route("/reports")

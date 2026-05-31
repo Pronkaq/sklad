@@ -169,6 +169,7 @@
         <a href="{{ url_for('manual_pallet') }}">Текущий остаток</a>
         <a href="{{ url_for('assortments_page') }}">Ассортимент</a>
         <a href="{{ url_for('scan_page') }}">Сканировать QR</a>
+        <a href="{{ url_for('stock_page') }}">Остатки</a>
         <a href="{{ url_for('reports_page') }}">Отчёты</a>
         <a href="{{ url_for('export_stock') }}">Выгрузить остатки Excel</a>
     {% endif %}
@@ -187,7 +188,7 @@
 <div class="mobile-actions">
     <a class="btn" href="{{ url_for('scan_page') }}">Сканер</a>
     <a class="btn secondary" href="{{ url_for('search') }}">Поиск</a>
-    <a class="btn ok" href="{{ url_for('reports_page') }}">Отчёты</a>
+    <a class="btn ok" href="{{ url_for('stock_page') }}">Остатки</a>
 </div>
 {% endif %}
 <script>

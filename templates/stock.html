@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h1>Остатки цеха 5</h1>
+    <p class="muted">Выберите склад и период. В режиме «На дату» показано состояние остатков на конец выбранного дня.</p>
+    <form method="get" class="actions">
+        <div>
+            <label>Период</label>
+            <select name="mode" id="stock-mode">
+                <option value="current" {% if mode == 'current' %}selected{% endif %}>За весь период — текущие остатки</option>
+                <option value="day" {% if mode == 'day' %}selected{% endif %}>На дату — остатки за день</option>
+            </select>
+        </div>
+        <div id="stock-date-wrap" {% if mode != 'day' %}style="display:none"{% endif %}>
+            <label>Дата</label>
+            <input type="date" name="date" value="{{ selected_date }}">
+        </div>
+        <input type="hidden" name="warehouse" value="{{ selected_warehouse }}">
+        <button type="submit">Показать</button>
+    </form>
+</div>
+
+<div class="stock-grid">
+    <a class="stock-card {% if selected_warehouse == 'ALL' %}selected{% endif %}" href="{{ url_for('stock_page', mode=mode, date=selected_date, warehouse='ALL') }}">
+        <strong>Все склады</strong>
+        <span>Показать общий список</span>
+    </a>
+    {% for code, name in warehouses %}
+        {% set totals = summary_by_warehouse.get(code) %}
+        <a class="stock-card {% if selected_warehouse == code %}selected{% endif %}" href="{{ url_for('stock_page', mode=mode, date=selected_date, warehouse=code) }}">
+            <strong>{{ name }}</strong>
+            <span>{{ totals.pallets_count if totals else 0 }} поддонов · {{ totals.rolls_sum if totals else 0 }} рулонов</span>
+            <b>{{ "%.2f"|format(totals.meters_sum if totals else 0) }} м</b>
+        </a>
+    {% endfor %}
+</div>
+
+<div class="card">
+    <h2>
+        {% if selected_warehouse == 'ALL' %}Все склады{% else %}{{ LOCATIONS.get(selected_warehouse, selected_warehouse) }}{% endif %}
+        {% if mode == 'day' %}на {{ selected_date }}{% else %}сейчас{% endif %}
+    </h2>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Склад</th>
+                    <th>Ассортимент</th>
+                    <th>Поддонов</th>
+                    <th>Рулонов</th>
+                    <th>Метраж</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for row in stock %}
+                <tr>
+                    <td>{{ LOCATIONS.get(row.location, row.location) }}</td>
+                    <td>{{ row.assortment }}</td>
+                    <td>{{ row.pallets_count }}</td>
+                    <td>{{ row.rolls_sum or 0 }}</td>
+                    <td>{{ "%.2f"|format(row.meters_sum or 0) }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="5" class="muted">Для выбранного склада и периода остатков нет.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.stock-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; margin:16px 0; }
+.stock-card { display:flex; flex-direction:column; gap:8px; padding:16px; border:1px solid var(--line); border-radius:14px; background:#fff; color:#111827; text-decoration:none; }
+.stock-card:hover { border-color:var(--accent); }
+.stock-card.selected { border-color:var(--accent); background:#eef2ff; box-shadow:0 0 0 2px rgba(37,99,235,.12); }
+.stock-card span { color:var(--muted); font-size:14px; }
+.stock-card b { color:var(--accent); }
+</style>
+<script>
+const stockMode = document.getElementById('stock-mode');
+const stockDateWrap = document.getElementById('stock-date-wrap');
+stockMode.addEventListener('change', () => {
+    stockDateWrap.style.display = stockMode.value === 'day' ? '' : 'none';
+});
+</script>
+{% endblock %}
